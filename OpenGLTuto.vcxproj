@@ -24,6 +24,7 @@
     <ProjectGuid>{1a402010-dd87-41eb-9143-dc9610282106}</ProjectGuid>
     <RootNamespace>OpenGLTuto</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>CloudGen</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -149,14 +150,23 @@
   <ItemGroup>
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="utils\debugging.cpp" />
+    <ClCompile Include="utils\IndexBuffer.cpp" />
+    <ClCompile Include="utils\Renderer.cpp" />
+    <ClCompile Include="utils\VertexArray.cpp" />
+    <ClCompile Include="utils\VertexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
-    <None Include="res\shaders\Fragment.shader" />
-    <None Include="res\shaders\Vertex.shader" />
+    <None Include="res\shaders\basic.frag.glsl" />
+    <None Include="res\shaders\basic.vert.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils\debugging.h" />
+    <ClInclude Include="utils\IndexBuffer.h" />
+    <ClInclude Include="utils\Renderer.h" />
+    <ClInclude Include="utils\VertexArray.h" />
+    <ClInclude Include="utils\VertexBuffer.h" />
+    <ClInclude Include="utils\VertexBufferLayout.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

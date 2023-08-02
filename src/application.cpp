@@ -8,6 +8,10 @@
 #include <string>
 #include <sstream>
 
+#include "../utils/IndexBuffer.h"
+#include "../utils/VertexBuffer.h"
+#include "../utils/VertexArray.h"
+
 
 
 struct ShaderProgramSource {
@@ -65,8 +69,6 @@ static unsigned int CreateShader(const std::string& vertexShader, const std::str
 	glDeleteShader(vs);
 	glDeleteShader(fs);
 
-
-
 	return program;
 }
 
@@ -93,6 +95,8 @@ int main(void)
 	/* Make the window's context current */
 	glfwMakeContextCurrent(window);
 
+	glfwSwapInterval(1);
+
 
 	
 	if (glewInit() != GLEW_OK)
@@ -116,26 +120,33 @@ int main(void)
 		2, 3, 0
 	};
 
-	unsigned int buffer;
-	glGenBuffers(1, &buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer); //this bind causes the next drawArrays to use this buffer
-	glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), positions, GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
+	unsigned int vao;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
-	unsigned int ibo;
-	glGenBuffers(1, &ibo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+	VertexArray va;
+	VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+	VertexBufferLayout layout;
+	layout.Push(GL_FLOAT, 2);
+	va.AddBuffer(vb, layout);
 
 
-	ShaderProgramSource source = ParseShader("res/shaders/Vertex.shader", "res/shaders/Fragment.shader");
+	IndexBuffer ib(indices, 6);
+
+
+	ShaderProgramSource source = ParseShader("res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl");
 	std::cout << source.FragmentSource << std::endl;
 	std::cout << source.VertexSource << std::endl; 
 
 	unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
 	glUseProgram(shader);
+
+	int location = glGetUniformLocation(shader, "u_Color");
+	glUniform4f(location, 0.2f, 0.3f, 0.8f, 1.0f);
+
+	float r = 0.0f;
+	float increment = 0.05f;
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -143,7 +154,23 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		glUseProgram(shader);
+		glUniform4f(location, r, 0.3f, 0.8f, 1.0f);
+
+		va.Bind();
+		ib.Bind();
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+
+		glUniform4f(location, r, 0.3f, 0.8f, 1.0f);
+		if (r > 1.0f) {
+			increment = -0.05f;
+		}
+		else if (r < 0.0f) {
+			increment = 0.05f;
+		}
+		r += increment;
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);

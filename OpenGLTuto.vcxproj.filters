@@ -21,14 +21,41 @@
     <ClCompile Include="utils\debugging.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="utils\VertexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\Renderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\IndexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\VertexArray.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
-    <None Include="res\shaders\Vertex.shader" />
-    <None Include="res\shaders\Fragment.shader" />
+    <None Include="res\shaders\basic.vert.glsl" />
+    <None Include="res\shaders\basic.frag.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils\debugging.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\VertexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\IndexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\VertexArray.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\VertexBufferLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

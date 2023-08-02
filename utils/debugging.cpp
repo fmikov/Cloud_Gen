@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
+#include "debugging.h"
+
 void APIENTRY glDebugOutput(GLenum source,
     GLenum type,
     unsigned int id,
@@ -52,7 +54,6 @@ void APIENTRY glDebugOutput(GLenum source,
 void setupDebugContext() {
 	int flags = 0;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-	std::cout << flags << std::endl;
 	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
 		// initialize debug output 
 		std::cout << "Debug context created" << std::endl;
