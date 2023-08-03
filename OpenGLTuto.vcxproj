@@ -149,9 +149,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\application.cpp" />
-    <ClCompile Include="utils\debugging.cpp" />
+    <ClCompile Include="utils\Debugging.cpp" />
     <ClCompile Include="utils\IndexBuffer.cpp" />
     <ClCompile Include="utils\Renderer.cpp" />
+    <ClCompile Include="utils\Shader.cpp" />
     <ClCompile Include="utils\VertexArray.cpp" />
     <ClCompile Include="utils\VertexBuffer.cpp" />
   </ItemGroup>
@@ -161,9 +162,11 @@
     <None Include="res\shaders\basic.vert.glsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="utils\debugging.h" />
+    <ClInclude Include="utils\Debugging.h" />
     <ClInclude Include="utils\IndexBuffer.h" />
     <ClInclude Include="utils\Renderer.h" />
+    <ClInclude Include="utils\Shader.h" />
+    <ClInclude Include="utils\stb\stb_image.h" />
     <ClInclude Include="utils\VertexArray.h" />
     <ClInclude Include="utils\VertexBuffer.h" />
     <ClInclude Include="utils\VertexBufferLayout.h" />

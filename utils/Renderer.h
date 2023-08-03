@@ -2,4 +2,13 @@
 
 #include <GL/glew.h>
 
-#define ASSERT(x) if (!(x)) __debugbreak();
+#include "IndexBuffer.h"
+#include "Shader.h"
+#include "VertexArray.h"
+
+class Renderer {
+//private:
+public:
+	void Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader);
+	void Clear() const;
+};
