@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-#include "debugging.h"
+#include "Debugging.h"
 
 void APIENTRY glDebugOutput(GLenum source,
     GLenum type,
