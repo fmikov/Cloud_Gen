@@ -45,13 +45,14 @@ void Shader::SetUniform4f(const std::string& name, float v0, float v1, float v2,
 }
 //this could be done differently, 
 int Shader::GetUniformLocation(const std::string& name) {
-	const auto& ite = m_UniformLocationCache.find("key");
-	if ( ite != m_UniformLocationCache.end) 
+	auto ite = m_UniformLocationCache.find("key");
+	if ( ite != m_UniformLocationCache.end()) 
 		return ite->second;
 	int location = glGetUniformLocation(m_RendererID, name.c_str());
 	if (location == -1)
 		std::cout << "Warning: uniform '" << name << "' doesn't exist" << std::endl;
-	ite->second = location;
+	//TODO make this more efficient
+	m_UniformLocationCache[name] = location;
 	return location;
 }
 
