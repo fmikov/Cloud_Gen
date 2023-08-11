@@ -8,12 +8,13 @@
 #include <string>
 #include <sstream>
 
-#include "../utils/Texture.h"
-#include "../utils/IndexBuffer.h"
-#include "../utils/VertexBuffer.h"
-#include "../utils/VertexArray.h"
-#include "../utils/Shader.h"
-#include "../utils/Renderer.h"
+#include "Camera.h"
+#include "Texture.h"
+#include "IndexBuffer.h"
+#include "VertexBuffer.h"
+#include "VertexArray.h"
+#include "Shader.h"
+#include "Renderer.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -87,8 +88,9 @@ int main(void)
 	IndexBuffer ib(indices, 6);
 
 	//converts into [-1, -1] range
-	glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	//glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
+	mat4 proj = perspective(radians(45.0f), (float)4 / (float)3, 0.0f, 100.0f);
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -4.0f)); //camera
 	
 
 
@@ -104,7 +106,7 @@ int main(void)
 	ib.Unbind();
 	vb.Unbind();
 	shader.Unbind();
-
+	
 	//imgui setup
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -127,6 +129,8 @@ int main(void)
 	glm::vec3 translation(0.2f, 0.2f, 0.0f);
 
 	Renderer renderer;
+	Camera camera(vec3(0.f, 0.0f, 0.f));
+	view = camera.GetLookAtMatrix();
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -139,6 +143,8 @@ int main(void)
 		ImGui::NewFrame();
 
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
+
+		view = camera.GetLookAtMatrix();
 
 		glm::mat4 mvp = proj * view * model; //multiplication right to left
 
