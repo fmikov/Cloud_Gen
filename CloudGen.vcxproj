@@ -326,6 +326,8 @@
     <ClInclude Include="Dependencies\GLFW\include\GLFW\glfw3.h" />
     <ClInclude Include="Dependencies\GLFW\include\GLFW\glfw3native.h" />
     <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\CameraInputHandler.h" />
+    <ClInclude Include="src\Global.h" />
     <ClInclude Include="src\Noise.h" />
     <ClInclude Include="src\NoiseMath.h" />
     <ClInclude Include="utils\Debugging.h" />

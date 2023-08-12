@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "Camera.h"
+#include "CameraInputHandler.h"
 #include "Texture.h"
 #include "IndexBuffer.h"
 #include "VertexBuffer.h"
@@ -21,6 +22,9 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
+
+#include "Global.h"
+
 
 int main(void)
 {
@@ -129,8 +133,8 @@ int main(void)
 	glm::vec3 translation(0.2f, 0.2f, 0.0f);
 
 	Renderer renderer;
-	Camera camera(vec3(0.f, 0.0f, 0.f));
 	view = camera.GetLookAtMatrix();
+	proj = camera.GetPerspectiveMatrix();
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -142,9 +146,15 @@ int main(void)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		//input
+		glfwSetCursorPosCallback(window, CameraInputHandler::MousePositionCallback);
+		glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
+		
+
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
 
-		view = camera.GetLookAtMatrix();
+		view = camera.GetWalkMatrix();
+		proj = camera.GetPerspectiveMatrix();
 
 		glm::mat4 mvp = proj * view * model; //multiplication right to left
 
