@@ -1,4 +1,7 @@
 #pragma once
+#include "GLFW/glfw3.h"
 
-
-Camera camera(vec3(0.f, 0.f, 0.f));
+inline float currFrame;
+inline float lastFrame;
+inline float deltaTime;
+inline bool KEY_MAP[GLFW_KEY_MENU]; //size 348

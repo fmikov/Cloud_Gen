@@ -136,6 +136,13 @@ int main(void)
 	view = camera.GetLookAtMatrix();
 	proj = camera.GetPerspectiveMatrix();
 
+
+	//input
+	glfwSetCursorPosCallback(window, CameraInputHandler::MousePositionCallback);
+	glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
+	glfwSetKeyCallback(window, CameraInputHandler::KeyboardMovementCallback);
+
+
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
 	{
@@ -146,10 +153,13 @@ int main(void)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		//input
-		glfwSetCursorPosCallback(window, CameraInputHandler::MousePositionCallback);
-		glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
-		
+		currFrame = glfwGetTime();
+		deltaTime = currFrame - lastFrame;
+		lastFrame = currFrame;
+
+
+		//process keyboard input for camera
+		camera.ProcessKeyboard();
 
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
 

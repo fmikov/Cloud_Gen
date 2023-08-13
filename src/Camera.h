@@ -2,13 +2,15 @@
 #include "glm.hpp"
 #include "ext/matrix_transform.hpp"
 #include "GLFW/glfw3.h"
+#include "Global.h"
+#include "ext/matrix_clip_space.hpp"
 
 using namespace glm;
 
 class Camera
 {
 private:
-	vec3 m_CameraTarget;
+	vec3 m_CameraFront;
 	vec3 m_CameraPos = vec3(0.f, 0.f, -3.f);
 	vec3 m_CameraUp;
 	vec3 m_CameraRight;
@@ -19,8 +21,8 @@ private:
 	float m_Pitch = 0.0f;
 	float m_Yaw =  - 90.0f;
 	// camera options
-	float MovementSpeed;
-	float MouseSensitivity;
+	float m_MovementSpeed = 5.f;
+	float m_MouseSensitivity = 0.1f;
 	float m_FOV;
 
 	void UpdateCameraVectors();

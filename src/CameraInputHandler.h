@@ -3,6 +3,7 @@
 #include "GLFW/glfw3.h"
 #include "Global.h"
 
+Camera camera(vec3(0.f, 0.f, 0.f));
 namespace CameraInputHandler
 {
 
@@ -39,5 +40,23 @@ namespace CameraInputHandler
     void MouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
     {
         camera.ProcessMouseScroll(static_cast<float>(yoffset));
+    }
+
+    void KeyboardMovementCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+    {
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        {
+            KEY_MAP[GLFW_KEY_ESCAPE] = true;
+			glfwSetWindowShouldClose(window, true);
+        }
+
+        if (action == GLFW_PRESS)
+        {
+            KEY_MAP[key] = true;
+        }
+        if (action == GLFW_RELEASE)
+        {
+            KEY_MAP[key] = false;
+        }
     }
 };
