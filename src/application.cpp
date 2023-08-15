@@ -38,7 +38,8 @@ int main(void)
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(1920, 1080, "Hello World", NULL, NULL);
+	const vec2 RESOLUTION = { 1920.f, 1080.f };
+	window = glfwCreateWindow(RESOLUTION.x, RESOLUTION.y, "Hello World", NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
@@ -62,56 +63,38 @@ int main(void)
 
 
 	float positions[] = {
-		-0.5f, -0.5f, 0.0f, 0.0f,
-		 0.5f, -0.5f, 1.0f, 0.0f,
-		 0.5f,  0.5f, 1.0f, 1.0f,
-		-0.5f,  0.5f, 0.0f, 1.0f
+		-1.f, -1.f, 0.f, 0.f,
+		 3.f, -1.f, 2.f, 0.f,
+		-1.f,  3.f, 0.f, 2.f,
 	};
 
 	unsigned int indices[]{
-		0, 1, 2,
-		2, 3, 0
+		0, 1, 2
 	};
 
 	//setup blending
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	unsigned int vao;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
 
-	VertexArray va;
-	VertexBuffer vb(positions, 4 * 4 * sizeof(float));
-	VertexBufferLayout layout;
-	layout.Push(GL_FLOAT, 2);
-	layout.Push(GL_FLOAT, 2);
-	va.AddBuffer(vb, layout);
-
-
-	IndexBuffer ib(indices, 6);
+	//try fullscreen triangle for raymarch
+	GLuint emptyVAO;
+	glGenVertexArrays(1, &emptyVAO);
+	glBindVertexArray(emptyVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	//converts into [-1, -1] range
 	//glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
-	mat4 proj = perspective(radians(45.0f), (float)4 / (float)3, 0.0f, 100.0f);
+	mat4 proj = perspective(radians(45.0f), RESOLUTION.x/RESOLUTION.y, 0.0f, 100.0f);
 	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -4.0f)); //camera
 	
 
+	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
+	shader_march.Bind();
+	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
+	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
 
-	Shader shader = {"res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl"};
-	shader.Bind();
-	shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
-
-	Texture texture("res/bark.png");
-	texture.Bind();
-	shader.SetUniform1i("u_Texture", 0);
-
-	va.Unbind();
-	ib.Unbind();
-	vb.Unbind();
-	shader.Unbind();
-	
-	//imgui setup
+	// --------------------------------------------- imgui setup
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -127,10 +110,8 @@ int main(void)
 	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-	float r = 0.0f;
-	float increment = 0.05f;
+	// ----------------------------------------------
 
-	glm::vec3 translation(0.2f, 0.2f, 0.0f);
 
 	Renderer renderer;
 	view = camera.GetLookAtMatrix();
@@ -157,36 +138,23 @@ int main(void)
 		deltaTime = currFrame - lastFrame;
 		lastFrame = currFrame;
 
-
+		
 		//process keyboard input for camera
 		camera.ProcessKeyboard();
 
-		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
+		mat4 model = mat4(1.f);
 
 		view = camera.GetWalkMatrix();
 		proj = camera.GetPerspectiveMatrix();
 
-		glm::mat4 mvp = proj * view * model; //multiplication right to left
+		mat4 mvp = proj * view * model; //multiplication right to left
 
 
-		shader.Bind();
-		//shader.SetUniform4f("u_Color", r, 0.3f, 0.8f, 1.0f);
-		shader.SetUniformMat4f("u_MVP", mvp);
-		renderer.Draw(va, ib, shader);
-		model = glm::translate(glm::mat4(1.0f), -translation);
-		mvp = proj * view * model;
-		shader.SetUniformMat4f("u_MVP", mvp);
-		renderer.Draw(va, ib, shader);
-
-		if (r > 1.0f)
-		{
-			increment = -0.05f;
-		}
-		else if (r < 0.0f)
-		{
-			increment = 0.05f;
-		}
-		r += increment;
+		shader_march.Bind();
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		double xc, yc;
+		glfwGetCursorPos(window, &xc, &yc);
+		std::cout << xc << " " << yc << std::endl;
 
 
 		if (show_demo_window)
@@ -201,7 +169,6 @@ int main(void)
 			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 			ImGui::Checkbox("Another Window", &show_another_window);
 
-			ImGui::SliderFloat3("Translation", &translation.x, -2.0f, 2.0f);
 			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
 			ImGui::ColorEdit3("clear color", (float*)&clear_color);
 
@@ -215,7 +182,7 @@ int main(void)
 		}
 
 		ImGui::Render();
-		int display_w, display_h;
+		//int display_w, display_h;
 		//glfwGetFramebufferSize(window, &display_w, &display_h);
 		//glViewport(0, 0, display_w, display_h);
 		//glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
