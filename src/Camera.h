@@ -23,6 +23,8 @@ private:
 	// camera options
 	float m_MovementSpeed = 5.f;
 	float m_MouseSensitivity = 0.1f;
+
+private:
 	float m_FOV;
 
 	void UpdateCameraVectors();
@@ -39,7 +41,26 @@ public:
 	void ProcessKeyboard();
 	void ProcessMouseScroll(float yoffset);
 	void ProcessMouseMovement(float xoffset, float yoffset);
-	
+
+	[[nodiscard]] vec3 m_camera_front() const
+	{
+		return m_CameraFront;
+	}
+
+	[[nodiscard]] vec3 m_camera_pos() const
+	{
+		return m_CameraPos;
+	}
+
+	[[nodiscard]] vec3 m_camera_up() const
+	{
+		return m_CameraUp;
+	}
+
+	[[nodiscard]] vec3 m_camera_right() const
+	{
+		return m_CameraRight;
+	}
 };
 
 void processInput(GLFWwindow* window);

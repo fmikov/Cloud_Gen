@@ -36,7 +36,7 @@ mat4 Camera::GetWalkMatrix()
 	// direction.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
 	// direction.y = sin(glm::radians(m_Pitch));
 	// direction.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
-    vec3 cameraFront = normalize(m_CameraFront);
+    // vec3 cameraFront = normalize(m_CameraFront);
     mat4 view = glm::lookAt(m_CameraPos, m_CameraPos - m_CameraFront, m_GlobalUp);  
     return view;
 }

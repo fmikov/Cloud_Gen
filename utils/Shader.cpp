@@ -44,6 +44,10 @@ void Shader::SetUniform4f(const std::string& name, float v0, float v1, float v2,
 	glUniform4f(GetUniformLocation(name), v0, v1, v2, v3);
 }
 
+void Shader::SetUniformVec3f(const std::string& name, glm::vec3 v) {
+	glUniform3f(GetUniformLocation(name), v.x, v.y, v.z);
+}
+
 void Shader::SetUniform2f(const std::string& name, float v0, float v1) {
 	glUniform2f(GetUniformLocation(name), v0, v1);
 }
@@ -54,7 +58,7 @@ void Shader::SetUniform1f(const std::string& name, float v0) {
 
 //this could be done differently, 
 int Shader::GetUniformLocation(const std::string& name) {
-	auto ite = m_UniformLocationCache.find("key");
+	auto ite = m_UniformLocationCache.find(name.c_str());
 	if ( ite != m_UniformLocationCache.end()) 
 		return ite->second;
 	int location = glGetUniformLocation(m_RendererID, name.c_str());

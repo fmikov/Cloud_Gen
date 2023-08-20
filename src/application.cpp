@@ -84,15 +84,21 @@ int main(void)
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	//converts into [-1, -1] range
-	//glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
-	mat4 proj = perspective(radians(45.0f), RESOLUTION.x/RESOLUTION.y, 0.0f, 100.0f);
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -4.0f)); //camera
+	glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
+	//mat4 proj = perspective(radians(45.0f), RESOLUTION.x/RESOLUTION.y, 0.0f, 100.0f);
+	mat4 view = glm::translate(glm::mat4(0.0f), glm::vec3(0.0f, 0.0f, -4.0f)); //camera
+	mat4 model = mat4(1.f);
+
+	mat4 mvp = proj * view * model;
 	
 
 	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
 	shader_march.Bind();
 	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
 	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
+	shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+	shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+	shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
 
 	// --------------------------------------------- imgui setup
 	IMGUI_CHECKVERSION();
@@ -106,7 +112,7 @@ int main(void)
 
 	ImGui::StyleColorsDark();
 
-	bool show_demo_window = true;
+	bool show_demo_window = false;
 	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -142,20 +148,23 @@ int main(void)
 		//process keyboard input for camera
 		camera.ProcessKeyboard();
 
-		mat4 model = mat4(1.f);
-
 		view = camera.GetWalkMatrix();
-		proj = camera.GetPerspectiveMatrix();
+		//proj = camera.GetPerspectiveMatrix();
 
-		mat4 mvp = proj * view * model; //multiplication right to left
+		mvp = proj * view * model; //multiplication right to left
 
 
 		shader_march.Bind();
+
+		shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+		shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+		shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		double xc, yc;
 		glfwGetCursorPos(window, &xc, &yc);
 		std::cout << xc << " " << yc << std::endl;
-
+		
 
 		if (show_demo_window)
 			ImGui::ShowDemoWindow(&show_demo_window);
