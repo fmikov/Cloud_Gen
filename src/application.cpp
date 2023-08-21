@@ -78,6 +78,9 @@ int main(void)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	unsigned int vao;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
 	VertexArray va;
 	VertexBuffer vb(positions, 4 * 4 * sizeof(float));
