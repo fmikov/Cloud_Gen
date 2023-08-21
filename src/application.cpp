@@ -100,16 +100,10 @@ int main(void)
 	mat4 mvp = proj * view * model;
 	
 
-	Shader shader_march = { "res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl" };
+	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
+
+
 	shader_march.Bind();
-	shader_march.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
-
-
-	Texture texture("res/bark.png");
-	texture.Bind();
-	shader_march.SetUniform1i("u_Texture", 0);
-
-
 	// shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
 	// shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
 	// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
@@ -179,13 +173,9 @@ int main(void)
 
 
 		shader_march.Bind();
-
-
-		shader_march.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
-
-		Texture texture("res/bark.png");
-		texture.Bind();
-		shader_march.SetUniform1i("u_Texture", 0);
+		//shader.SetUniform4f("u_Color", r, 0.3f, 0.8f, 1.0f);
+		shader_march.SetUniformMat4f("u_MVP", mvp);
+		renderer.Draw(va, ib, shader_march);
 
 		// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
 		// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
@@ -193,7 +183,6 @@ int main(void)
 		// shader_march.SetUniformMat4f("u_MVP", mvp);
 		// shader_march.SetUniformMat4f("u_MVP_inverse", inverse(mvp));
 
-		renderer.Draw(va, ib, shader_march);
 		double xc, yc;
 		glfwGetCursorPos(window, &xc, &yc);
 		std::cout << xc << " " << yc << std::endl;
