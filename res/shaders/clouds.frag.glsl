@@ -112,24 +112,25 @@ vec3 getNormalSphere(vec3 currPos, vec3 center){
 }
 
 void main() {
-    vec2 uv=gl_FragCoord.xy/u_Resolution.xy;
-    uv-=vec2(0.5);//offset, so center of screen is origin
-    uv.x*=u_Resolution.x/u_Resolution.y;//scale, so there is no rectangular distortion
+    //vec2 uv=gl_FragCoord.xy/u_Resolution.xy;
+    //uv-=vec2(0.5);//offset, so center of screen is origin
+    //uv.x*=u_Resolution.x/u_Resolution.y;//scale, so there is no rectangular distortion
 
     //vec3 ro = u_CameraPos + normalize((vec3(uv, 1.0) * (u_CameraRight)));
     //vec3 rd = u_CameraFront;
 
 
-    vec3 origin = near_4.xyz/near_4.w;  //ray's origin
-    vec3 far3 = far_4.xyz/far_4.w;
-    vec3 dir = far3 - origin;
-    dir = normalize(dir);        //ray's direction
+    //vec3 origin = near_4.xyz/near_4.w;  //ray's origin
+    //vec3 far3 = far_4.xyz/far_4.w;
+    //vec3 dir = far3 - origin;
+    //dir = normalize(dir);        //ray's direction
 
-    vec3 camera_position = vec3(0.0, 0.0, -4.0);
-    vec3 ro = u_CameraPos;
-    vec3 rd = normalize(vec3(uv, 1.0));
+    //vec3 camera_position = vec3(0.0, 0.0, -4.0);
+    //vec3 ro = u_CameraPos;
+    //vec3 rd = normalize(vec3(uv, 1.0));
 
-    vec3 shaded_color = ray_march(origin, dir);
+    //vec3 shaded_color = ray_march(origin, dir);
 
-    color = vec4(origin, 1.0);
+    //color = vec4(origin, 1.0);
+    color = vec4(1.0, 1.0, 0.0, 0.0);
 }
