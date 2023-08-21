@@ -99,6 +99,7 @@ int main(void)
 	shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
 	shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
 	shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+	shader_march.SetUniformMat4f("u_MVP", mvp);
 
 	// --------------------------------------------- imgui setup
 	IMGUI_CHECKVERSION();
@@ -159,6 +160,8 @@ int main(void)
 		shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
 		shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
 		shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+		shader_march.SetUniformMat4f("u_MVP", mvp);
+		shader_march.SetUniformMat4f("u_MVP_inverse", inverse(mvp));
 
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		double xc, yc;
