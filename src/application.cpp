@@ -109,6 +109,13 @@ int main(void)
 	// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
 	// shader_march.SetUniformMat4f("u_MVP", mvp);
 
+
+
+	va.Unbind();
+	ib.Unbind();
+	vb.Unbind();
+	shader_march.Unbind();
+
 	// --------------------------------------------- imgui setup
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -164,6 +171,13 @@ int main(void)
 
 
 		shader_march.Bind();
+
+
+		shader_march.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
+
+		Texture texture("res/bark.png");
+		texture.Bind();
+		shader_march.SetUniform1i("u_Texture", 0);
 
 		// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
 		// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
