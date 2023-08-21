@@ -62,60 +62,31 @@ int main(void)
 	setupDebugContext();
 
 
-	// float positions[] = {
-	// 	-1.f, -1.f, 0.f, 0.f,
-	// 	 3.f, -1.f, 2.f, 0.f,
-	// 	-1.f,  3.f, 0.f, 2.f,
-	// };
+	float positions[] = {
+		-1.0f, -1.0f, 0.0f, 0.0f,
+		 1.0f, -1.0f, 1.0f, 0.0f,
+		 1.0f,  1.0f, 1.0f, 1.0f,
+		-1.0f,  1.0f, 0.0f, 1.0f
+	};
 
-	// unsigned int indices[]{
-	// 	0, 1, 2
-	// };
+	unsigned int indices[]{
+		0, 1, 2,
+		2, 3, 0
+	};
 
 	//setup blending
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	//try fullscreen triangle for raymarch
-	// VertexArray va;
-	// VertexBuffer vb(positions, 3 * 4 * sizeof(float));
-	// VertexBufferLayout layout;
-	// layout.Push(GL_FLOAT, 2);
-	// layout.Push(GL_FLOAT, 2);
-	// va.AddBuffer(vb, layout);
-	//
-	// IndexBuffer ib(indices, 3);
-
-	//maybe use fullscreen triangle?
-	float quad[] =
-	{
-		-1.0f,  1.0f,	// top left corner
-		-1.0f, -1.0f,	// bottom left corner
-		 1.0f,  1.0f,	// top right corner
-		 1.0f, -1.0f	// bottom right corner
-	};
-	unsigned int indices[] =
-	{
-	0,
-	1,
-	2,
-	3
-	};
-
 	VertexArray va;
-	VertexBuffer vb(quad, sizeof(quad));
+	VertexBuffer vb(positions, 4 * 4 * sizeof(float));
 	VertexBufferLayout layout;
 	layout.Push(GL_FLOAT, 2);
+	layout.Push(GL_FLOAT, 2);
 	va.AddBuffer(vb, layout);
-	IndexBuffer ib(indices, 1);
 
-
-
-	// GLuint emptyVAO;
-	// glGenVertexArrays(1, &emptyVAO);
-	// glBindVertexArray(emptyVAO);
-	// glDrawArrays(GL_TRIANGLES, 0, 3);
+	IndexBuffer ib(indices, 6);
 
 	//converts into [-1, -1] range
 	glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
@@ -126,14 +97,14 @@ int main(void)
 	mat4 mvp = proj * view * model;
 	
 
-	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
+	Shader shader_march = { "res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl" };
 	shader_march.Bind();
-	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
-	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
-	shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
-	shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
-	shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
-	shader_march.SetUniformMat4f("u_MVP", mvp);
+	// shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
+	// shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
+	// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+	// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+	// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+	// shader_march.SetUniformMat4f("u_MVP", mvp);
 
 	// --------------------------------------------- imgui setup
 	IMGUI_CHECKVERSION();
@@ -191,15 +162,13 @@ int main(void)
 
 		shader_march.Bind();
 
-		shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
-		shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
-		shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
-		shader_march.SetUniformMat4f("u_MVP", mvp);
-		shader_march.SetUniformMat4f("u_MVP_inverse", inverse(mvp));
+		// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+		// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+		// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+		// shader_march.SetUniformMat4f("u_MVP", mvp);
+		// shader_march.SetUniformMat4f("u_MVP_inverse", inverse(mvp));
 
 		renderer.Draw(va, ib, shader_march);
-		glDrawArrays(GL_QUADS, 0, 4);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
 		double xc, yc;
 		glfwGetCursorPos(window, &xc, &yc);
 		std::cout << xc << " " << yc << std::endl;

@@ -3,7 +3,7 @@ out vec2 v_TexCoord;
 out vec4 near_4;   
 out vec4 far_4;
 
-layout (location = 0) in vec2 position;
+layout (location = 0) in vec4 position;
 
 uniform float u_Aspect;
 uniform vec2 u_Resolution;
@@ -25,8 +25,8 @@ void main() {
     //near_4 = u_MVP_inverse * (vec4(pos, -1.0, 1.0));       
     //far_4 = u_MVP_inverse * (vec4(pos, +1.0, 1.0));
 
-    gl_Position = vec4(position, -1.0, 1.0);
-	v_TexCoord = position * 0.5 + 0.5; 
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+	v_TexCoord = position.xy * 0.5 + 0.5; 
 
 
 }
