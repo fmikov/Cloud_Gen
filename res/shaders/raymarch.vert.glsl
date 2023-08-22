@@ -3,7 +3,10 @@ out vec2 v_TexCoord;
 out vec4 near_4;   
 out vec4 far_4;
 
-layout (location = 0) in vec4 position;
+out vec3 origin;
+out vec3 ray_dir;
+
+layout (location = 0) in vec2 pos;
 
 uniform float u_Aspect;
 uniform vec2 u_Resolution;
@@ -19,14 +22,18 @@ void main() {
 
     //get 2D projection of this vertex in normalized device coordinates
     //vec2 pos = gl_Position.xy/gl_Position.w;
-   
-    //compute ray's start and end as inversion of this coordinates
-    //in near and far clip planes
-    //near_4 = u_MVP_inverse * (vec4(pos, -1.0, 1.0));       
-    //far_4 = u_MVP_inverse * (vec4(pos, +1.0, 1.0));
+    float near = 0.1;
+    float far = 100.0;
 
-    gl_Position = vec4(position.xy, 0.0, 1.0);
-	v_TexCoord = position.xy * 0.5 + 0.5; 
+    gl_Position = vec4(pos, 0.0, 1.0);       
 
+    origin = (u_MVP_inverse * vec4(pos, -1.0, 1.0) * near).xyz;
+    //ray_dir = (u_MVP_inverse * vec4(pos * (far - near), far + near, far - near)).xyz;
+    ray_dir = vec3(pos, 0.) + vec3(0.5);
 
+    near_4 = u_MVP_inverse * (vec4(pos, -1.0, 1.0));       
+    far_4 = u_MVP_inverse * (vec4(pos, +1.0, 1.0));
+
+    //gl_Position = vec4(position, 0.0, 1.0);
+	//v_TexCoord = position * 0.5 + 0.5; 
 }

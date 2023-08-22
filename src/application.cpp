@@ -24,6 +24,7 @@
 #include "imgui/imgui_impl_opengl3.h"
 
 #include "Global.h"
+#include "gtc/matrix_inverse.hpp"
 
 
 int main(void)
@@ -63,10 +64,10 @@ int main(void)
 
 
 	float positions[] = {
-		-1.0f, -1.0f, 0.0f, 0.0f,
-		 1.0f, -1.0f, 1.0f, 0.0f,
-		 1.0f,  1.0f, 1.0f, 1.0f,
-		-1.0f,  1.0f, 0.0f, 1.0f
+		-1.0f, -1.0f,
+		 1.0f, -1.0f,
+		 1.0f,  1.0f,
+		-1.0f,  1.0f,
 	};
 
 	unsigned int indices[]{
@@ -83,9 +84,8 @@ int main(void)
 	glBindVertexArray(vao);
 
 	VertexArray va;
-	VertexBuffer vb(positions, 4 * 4 * sizeof(float));
+	VertexBuffer vb(positions, 4 * 2 * sizeof(float));
 	VertexBufferLayout layout;
-	layout.Push(GL_FLOAT, 2);
 	layout.Push(GL_FLOAT, 2);
 	va.AddBuffer(vb, layout);
 
@@ -101,11 +101,12 @@ int main(void)
 	
 
 	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
+	Shader shader_basic = { "res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl" };
 
 
 	shader_march.Bind();
-	// shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
-	// shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
+	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
+	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
 	// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
 	// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
 	// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
@@ -167,25 +168,29 @@ int main(void)
 		camera.ProcessKeyboard();
 
 		view = camera.GetWalkMatrix();
-		//proj = camera.GetPerspectiveMatrix();
+		proj = camera.GetPerspectiveMatrix();
 
 		mvp = proj * view * model; //multiplication right to left
 
-
 		shader_march.Bind();
-		//shader.SetUniform4f("u_Color", r, 0.3f, 0.8f, 1.0f);
 		shader_march.SetUniformMat4f("u_MVP", mvp);
+		shader_march.SetUniformMat4f("u_MVP_inverse", glm::inverse(proj*view));
+		shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+		shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+		shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+		shader_march.SetUniformVec3f("u_CameraUp", camera.m_camera_up());
 		renderer.Draw(va, ib, shader_march);
 
-		// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
-		// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
-		// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
-		// shader_march.SetUniformMat4f("u_MVP", mvp);
-		// shader_march.SetUniformMat4f("u_MVP_inverse", inverse(mvp));
+
+		shader_basic.Bind();
+		shader_basic.SetUniformMat4f("u_MVP", mvp);
+		renderer.Draw(va, ib, shader_basic);
+
+		
 
 		double xc, yc;
 		glfwGetCursorPos(window, &xc, &yc);
-		std::cout << xc << " " << yc << std::endl;
+		//std::cout << xc << " " << yc << std::endl;
 		
 
 		if (show_demo_window)
