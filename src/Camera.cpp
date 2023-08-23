@@ -43,7 +43,7 @@ mat4 Camera::GetWalkMatrix()
 
 mat4 Camera::GetPerspectiveMatrix()
 {
-    mat4 projection = glm::perspective(m_FOV, (float)1920 / (float)1080, 0.0f, 100.0f);
+    mat4 projection = glm::perspective(m_FOV, (float)1920 / (float)1080, 0.0f, 400.0f);
     return projection;
 
 }
