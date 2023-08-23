@@ -42,6 +42,10 @@ float distance_from_sphere(in vec3 p, in vec3 c, float r)
     return length(p - c) - r;
 }
 
+float distanceFromPlane(in vec3 p, in vec3 cp){
+    return dot(p, vec3(0.0, 1.0, 0.0)) - 5.0;
+}
+
 //Estimate normal 
 const float EPS=0.001;
 vec3 estimateNormal(vec3 p){
@@ -84,14 +88,15 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 }
 
 float distanceToClosestSphere(vec3 currPos) {
-    float min = 10000.0;
+    float minv = 10000.0;
     for(int i = 0; i < SPHERES.length; i++) {
         float d = distance_from_sphere(currPos,SPHERES[i], 0.5);
-        if(d < min) {
-            min = d;
+        if(d < minv) {
+            minv = d;
         }
     }
-    return min;
+    minv = min(minv, distanceFromPlane(currPos, u_CameraPos));
+    return minv;
 }
 
 //TODO add material properties
@@ -132,19 +137,15 @@ void main() {
     vec2 uv = 2*screen_pos - 1;
     uv.x *= u_Aspect;
  
-    vec3 origin = near_4.xyz/near_4.w;  //ray's origin
-    vec3 far3 = far_4.xyz/far_4.w;
-    vec3 dir = far3 - origin;
-    dir = normalize(dir);
-    vec3 shaded_color = ray_march(origin, normalize(dir));
-
+    mat3 cam = mat3(-u_CameraRight, -u_CameraUp, u_CameraFront);
 
     float FOCAL_DIST = 1.73205080757;
     vec3 ro = u_MVP[3].xyz;
     vec4 tmp = vec4(uv, 1.0, 1.0);
     vec3 rd = normalize((u_MVP_inverse * tmp).xyz);
-    rd = normalize(rd - ro);
+    rd = normalize(ro - vec3(uv, 0.0));
+    rd = cam * normalize(vec3(uv, 1.0));    
     //rd = normalize((u_MVP * vec4(uv, FOCAL_DIST, 0.0)).xyz);
-    shaded_color = ray_march(ro, rd);
+    vec3 shaded_color = ray_march(ro, rd);
     color = vec4(shaded_color, 1.0);
 }
