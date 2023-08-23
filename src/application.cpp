@@ -27,6 +27,11 @@
 #include "gtc/matrix_inverse.hpp"
 
 
+
+double xc, yc;
+void MouseDragCallback(GLFWwindow* window, double xpos, double ypos);
+
+
 int main(void)
 {
 	GLFWwindow* window;
@@ -101,7 +106,6 @@ int main(void)
 	
 
 	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
-	Shader shader_basic = { "res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl" };
 
 
 	shader_march.Bind();
@@ -144,9 +148,9 @@ int main(void)
 
 
 	//input
-	glfwSetCursorPosCallback(window, CameraInputHandler::MousePositionCallback);
-	glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
-	glfwSetKeyCallback(window, CameraInputHandler::KeyboardMovementCallback);
+	glfwSetCursorPosCallback(window, MouseDragCallback);
+	//glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
+	//glfwSetKeyCallback(window, CameraInputHandler::KeyboardMovementCallback);
 
 
 	/* Loop until the user closes the window */
@@ -179,17 +183,16 @@ int main(void)
 		shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
 		shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
 		shader_march.SetUniformVec3f("u_CameraUp", camera.m_camera_up());
+		shader_march.SetUniform1f("u_Time", currFrame);
+
+
+		shader_march.SetUniform2f("u_Mouse", xc, yc);
+
 		renderer.Draw(va, ib, shader_march);
 
 
-		shader_basic.Bind();
-		shader_basic.SetUniformMat4f("u_MVP", mvp);
-		renderer.Draw(va, ib, shader_basic);
-
 		
 
-		double xc, yc;
-		glfwGetCursorPos(window, &xc, &yc);
 		//std::cout << xc << " " << yc << std::endl;
 		
 
@@ -239,4 +242,22 @@ int main(void)
 
 	glfwTerminate();
 	return 0;
+}
+
+
+void MouseDragCallback(GLFWwindow* window, double xpos, double ypos) {
+	bool lButtonDown = false;
+	int mouseAction = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+	if (mouseAction == GLFW_PRESS) {
+		lButtonDown = true;
+	}
+	if (mouseAction == GLFW_RELEASE) {
+		lButtonDown = false;
+	}
+
+	if (lButtonDown)
+	{
+		xc = xpos;
+		yc = ypos;
+	}
 }
