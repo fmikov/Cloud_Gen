@@ -31,10 +31,6 @@ const vec3 LIGHT_COLOR = vec3(1.0, 0.0, 0.0);
 const float LIGHT_INTENSITY = 20;
 const vec3 SPHERE_POS = vec3(0.5, 0.5, 0.0);
 
-struct ray {
-    vec3 pos;
-    vec3 dir;
-};
 
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
                in float distance ) // camera to point distance
@@ -141,6 +137,16 @@ vec3 blinn_phong(vec3 currPos, vec3 dirToView, vec3 normal) {
 
     vec3 colorGammaCorrected = pow(color, vec3(1.0 / 2.2));
     return colorGammaCorrected;
+}
+
+vec3 renderVolume(float distInVolume, vec3 colorInc){
+    //absorb and scatter coeffs are a probability density function
+    const float absorptionCoeff = 0.5;
+    const vec3 scatteringCoeff = vec3(0.5, 1.0, 0.3);
+    float Beer_Lambert = exp(-distInVolume * absorptionCoeff);
+    vec3 color = mix(scatteringCoeff, colorInc, Beer_Lambert);
+
+    return vec3(0.0);
 }
 
 mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
