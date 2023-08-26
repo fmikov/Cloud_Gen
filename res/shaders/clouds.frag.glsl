@@ -21,19 +21,29 @@ in vec2 v_TexCoord;
 in vec3 origin;
 in vec3 ray_dir;
 
-const int NUMBER_OF_STEPS = 32;
+const int NUMBER_OF_STEPS = 128;
 const float MINIMUM_HIT_DISTANCE = 0.001;
-const float MAXIMUM_TRACE_DISTANCE = 1000.0;
+const float MAXIMUM_TRACE_DISTANCE = 10000.0;
 
 const vec3 LIGHT_POS = vec3(3.0, 3.0, 4.0);
 const vec3 SPHERES[3] = vec3[](vec3(0.0, -1.0, 0.0), vec3(1.0, 1.0, 1.0), vec3(1.0, -1.0, 1.0));
 const vec3 LIGHT_COLOR = vec3(1.0, 0.0, 0.0);
+const float LIGHT_INTENSITY = 20;
 const vec3 SPHERE_POS = vec3(0.5, 0.5, 0.0);
 
 struct ray {
     vec3 pos;
     vec3 dir;
 };
+
+vec3 applyFog( in vec3  rgb,       // original color of the pixel
+               in float distance ) // camera to point distance
+{
+    const float b = 0.1;
+    float fogAmount = 1.0 - exp( -distance*b );
+    vec3  fogColor  = vec3(0.5,0.6,0.7);
+    return mix( rgb, fogColor, fogAmount );
+}
 
 vec3 blinn_phong(vec3 currPos, vec3 viewDir, vec3 normal);
 float distanceToClosest(vec3 currPos);
@@ -78,7 +88,9 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
         if (distance_to_closest < MINIMUM_HIT_DISTANCE) 
         {
             vec3 normal = estimateNormal(current_position);
-            return blinn_phong(current_position, rd, normal);
+            vec3 bp = blinn_phong(current_position, -rd, normal);
+            vec3 updated = applyFog(bp, total_distance_traveled);
+            return updated;
         }
 
         if (total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
@@ -102,20 +114,33 @@ float distanceToClosest(vec3 currPos) {
     return minv;
 }
 
-//TODO add material properties
-vec3 blinn_phong(vec3 currPos, vec3 viewDir, vec3 normal) {
-    const float ambient = 0.4;
-    const float diffuse = 0.8;
-    const float specular = 1.0;
-
-    vec3 ret = ambient*LIGHT_COLOR;
-    ret += diffuse * LIGHT_COLOR * dot(normalize(LIGHT_POS - currPos), normal);
+vec3 blinn_phong(vec3 currPos, vec3 dirToView, vec3 normal) {
+    const float amb = 0.1;
+    const float diff = 0.5;
+    const float shininess = 3.0;
+    float distanceToLight = length(LIGHT_POS - currPos);
     vec3 dirToLight = normalize(LIGHT_POS - currPos);
-    vec3 halfvec = normalize(dirToLight - viewDir);
-    if(dot(halfvec, viewDir) > 0.)
-        ret += pow(dot(halfvec, normal), specular) * LIGHT_COLOR;
+    float dist = distanceToLight * distanceToLight; 
 
-    return ret;
+    vec3 mat_color;
+
+    vec3 checkerboard = vec3(0.0, 0.0, 0.0);
+    if(mod(floor(currPos.x) + floor(currPos.z), 2) >= 1 ) checkerboard = vec3(1.0, 1.0, 1.0);
+
+    mat_color = checkerboard;
+
+    //ambient, diffuse, specular
+    vec3 ambient = amb * LIGHT_COLOR * mat_color;
+    vec3 diffuse = diff * LIGHT_COLOR * LIGHT_INTENSITY/dist * mat_color * max(dot(dirToLight, normal), 0.0);
+
+    vec3 halfvec = normalize(dirToLight + dirToView);
+    float spec = pow(max(dot(normal, halfvec), 0.0), shininess);
+    vec3 specular = LIGHT_COLOR * LIGHT_INTENSITY/dist * spec;
+
+    vec3 color = (ambient + diffuse + specular) * mat_color;
+
+    vec3 colorGammaCorrected = pow(color, vec3(1.0 / 2.2));
+    return colorGammaCorrected;
 }
 
 mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
@@ -139,7 +164,7 @@ void main() {
 
     // camera	
     vec3 ta = vec3( 0.25, -0.75, -0.75 );
-    vec3 ro = ta + vec3( 4.5*cos(0.1*u_Time + 7.0*mouse.x), 2.2, 4.5*sin(0.1*u_Time + 7.0*mouse.x) );
+    vec3 ro = ta + vec3( 4.5*cos(0.1*u_Time + 7.0*mouse.x), sin(mouse.y*(3.14/45)) + 3.2, 4.5*sin(0.1*u_Time + 7.0*mouse.x) );
     // camera-to-world transformation
     mat3 ca = setCamera( ro, ta, 0.0 );
 
