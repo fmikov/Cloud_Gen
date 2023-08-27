@@ -30,7 +30,7 @@ const vec3 SPHERES[3] = vec3[](vec3(0.0, -1.0, 0.0), vec3(1.0, 1.0, 1.0), vec3(1
 const vec3 LIGHT_COLOR = vec3(1.0, 0.0, 0.0);
 const float LIGHT_INTENSITY = 20;
 const vec3 SPHERE_POS = vec3(0.5, 0.5, 0.0);
-
+const vec3 BGC = vec3(0.0, 1.0, 0.0);
 
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
                in float distance ) // camera to point distance
@@ -42,7 +42,7 @@ vec3 applyFog( in vec3  rgb,       // original color of the pixel
 }
 
 vec3 blinn_phong(vec3 currPos, vec3 viewDir, vec3 normal);
-float distanceToClosest(vec3 currPos);
+float map(vec3 currPos);
 
 float distance_from_sphere(in vec3 p, in vec3 c, float r)
 {
@@ -56,12 +56,12 @@ float distanceFromPlane(in vec3 p){
 //Estimate normal 
 const float EPS=0.001;
 vec3 estimateNormal(vec3 p){
-    float xPl=distanceToClosest(vec3(p.x+EPS,p.y,p.z));
-    float xMi=distanceToClosest(vec3(p.x-EPS,p.y,p.z));
-    float yPl=distanceToClosest(vec3(p.x,p.y+EPS,p.z));
-    float yMi=distanceToClosest(vec3(p.x,p.y-EPS,p.z));
-    float zPl=distanceToClosest(vec3(p.x,p.y,p.z+EPS));
-    float zMi=distanceToClosest(vec3(p.x,p.y,p.z-EPS));
+    float xPl=map(vec3(p.x+EPS,p.y,p.z));
+    float xMi=map(vec3(p.x-EPS,p.y,p.z));
+    float yPl=map(vec3(p.x,p.y+EPS,p.z));
+    float yMi=map(vec3(p.x,p.y-EPS,p.z));
+    float zPl=map(vec3(p.x,p.y,p.z+EPS));
+    float zMi=map(vec3(p.x,p.y,p.z-EPS));
     float xDiff=xPl-xMi;
     float yDiff=yPl-yMi;
     float zDiff=zPl-zMi;
@@ -79,7 +79,7 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
         vec3 current_position = ro + total_distance_traveled * rd;
 
         int index = 0;
-        float distance_to_closest = distanceToClosest(current_position);
+        float distance_to_closest = map(current_position);
 
         if (distance_to_closest < MINIMUM_HIT_DISTANCE) 
         {
@@ -98,7 +98,111 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
     return vec3(0.0);
 }
 
-float distanceToClosest(vec3 currPos) {
+bool volumeSphereIntersect(in vec3 ro, in vec3 rd, in float t0, out float t1)
+{
+    t1 = 0;
+    for (int i = 0; i < NUMBER_OF_STEPS; ++i)
+    {
+        vec3 current_position = ro + t0 * rd;
+
+        int index = 0;
+        float distance_to_closest = map(current_position);
+
+        //if hit or inside the volume
+        if (distance_to_closest < 2*MINIMUM_HIT_DISTANCE) 
+        {
+
+        }
+        else 
+        {
+            t1 = t0;
+            return true;
+        }
+
+        if (t0 > MAXIMUM_TRACE_DISTANCE)
+        {
+            t1 = t0;
+            break;
+        }
+        t0 += distance_to_closest;
+    }
+    
+    return false;
+}
+
+vec3 integrate(in vec3 ro, in vec3 rd, in float t0, in float t1)
+{
+    float step_size = 0.2;
+    float sigma_a = 0.1;
+
+    int ns = int(ceil((t1 - t0) / step_size));
+    step_size = (t1 - t0) / ns;
+
+
+    float transparency = 1; // initialize transparency to 1
+    vec3 result = vec3(0.0); // initialize the volume color to 0
+
+
+    for (int n = 0; n < ns; ++n) {
+        float t = t1 - step_size * (n + 0.5);
+        vec3 sample_pos= ro + t * rd; // sample position (middle of the step)
+
+        // compute sample transparency using Beer's law
+        float sample_transparency = exp(-step_size * sigma_a);
+        
+        // attenuate global transparency by sample transparency
+        transparency *= sample_transparency;
+
+        // In-scattering. Find the distance traveled by light through 
+        // the volume to our sample point. Then apply Beer's law.
+        float temp = 0;
+
+        if (volumeSphereIntersect(LIGHT_POS, normalize(sample_pos-LIGHT_POS), t, temp)) {
+            float light_attenuation = exp(-t1 * sigma_a);
+            result += LIGHT_COLOR * light_attenuation * step_size;
+        }
+
+        // finally attenuate the result by sample transparency
+        result *= sample_transparency;
+    }
+
+    return result;
+}
+
+vec3 ray_march_volume(in vec3 ro, in vec3 rd)
+{
+    float total_distance_traveled = 0.0;
+
+
+ 
+    for (int i = 0; i < NUMBER_OF_STEPS; ++i)
+    {
+        float t0, t1;
+        vec3 current_position = ro + total_distance_traveled * rd;
+
+        int index = 0;
+        float distance_to_closest = map(current_position);
+
+        if (distance_to_closest < MINIMUM_HIT_DISTANCE) 
+        {
+            t0 = total_distance_traveled;
+            //sets t1 to second intersection
+            volumeSphereIntersect(ro, rd, t0, t1);
+            return vec3(t1, 0., 0.);
+            return integrate(ro, rd, t0, t1);
+        }
+
+        if (total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
+        {
+            break;
+        }
+        total_distance_traveled += distance_to_closest;
+    }
+    return BGC;
+}
+
+
+float map(vec3 currPos) {
     float minv = 10000.0;
     for(int i = 0; i < SPHERES.length; i++) {
         float d = distance_from_sphere(currPos,SPHERES[i], 0.5);
@@ -167,6 +271,7 @@ void main() {
     vec2 fragCoord = gl_FragCoord.xy;
 
     vec2 mouse = u_Mouse/u_Resolution;
+    float u_Time = 0;
 
     // camera	
     vec3 ta = vec3( 0.25, -0.75, -0.75 );
@@ -189,6 +294,7 @@ void main() {
     vec3 rdy = ca * normalize( vec3(py,fl) );
         
 
-    vec3 shaded_color = ray_march(ro, rd);
+    //vec3 shaded_color = ray_march(ro, rd);
+    vec3 shaded_color = ray_march_volume(ro, rd);
     color = vec4(shaded_color, 1.0);
 }
