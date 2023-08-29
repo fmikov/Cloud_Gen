@@ -183,6 +183,7 @@
     <None Include="res\shaders\basic.vert.glsl" />
     <None Include="res\shaders\clouds.frag.glsl" />
     <None Include="res\shaders\raymarch.vert.glsl" />
+    <None Include="res\shaders\utils.glsl" />
     <None Include="utils\glm\detail\func_common.inl" />
     <None Include="utils\glm\detail\func_common_simd.inl" />
     <None Include="utils\glm\detail\func_exponential.inl" />

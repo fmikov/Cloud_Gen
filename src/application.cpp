@@ -104,7 +104,6 @@ int main(void)
 
 	mat4 mvp = proj * view * model;
 	
-
 	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
 
 
