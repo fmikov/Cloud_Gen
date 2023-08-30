@@ -1,6 +1,7 @@
 #version 330 core
 
-
+#include "shader_includes/utils.glsl"
+#include "shader_includes/noise.glsl"
 
 layout(location = 0) out vec4 color;
 
@@ -49,15 +50,15 @@ struct Sphere
 };
 
 struct Hit {
-	float t;
+	float t0;
+    float t1;
 	int material_id;
 	vec3 normal;
 	vec3 origin;
+    bool inside;
 };
 
-float rand(vec2 co){
-    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
-}
+
 
 bool intersect_sphere(in Ray ray, in Sphere sphere, inout float t0, inout float t1
 ){
@@ -107,6 +108,35 @@ bool intersect_sphere_inside(in Ray ray, in Sphere sphere, inout float t0, inout
     return true;
 }
 
+bool intersect_sphere_test(
+	Ray ray,
+	Sphere sphere,
+	in out Hit hit
+){
+	vec3 rc = sphere.c - ray.ro;
+	float radius2 = sphere.r * sphere.r;
+	float tca = dot(rc, ray.rd);
+    if (tca < 0.) return false;
+
+	float d2 = dot(rc, rc) - tca * tca;
+	if (d2 > radius2)
+		return false;
+
+	float thc = sqrt(radius2 - d2);
+	hit.t0 = tca - thc;
+	hit.t1 = tca + thc;
+
+    if (hit.t0 < 0) {
+            if (hit.t1 < 0) return false;
+            else {
+                hit.inside = true;
+                hit.t0 = 0;
+            }
+        }
+
+    return true;
+}
+
 
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
                in float distance ) // camera to point distance
@@ -126,7 +156,6 @@ float phase(float g, float cos_theta)
 
 vec3 blinn_phong(vec3 currPos, vec3 viewDir, vec3 normal);
 float map(vec3 currPos);
-float noise(float x, float y, float z);
 float eval_density(vec3 p, vec3 center, float radius);
 
 float distance_from_sphere(in vec3 p, in vec3 c, float r)
@@ -153,36 +182,35 @@ vec3 estimateNormal(vec3 p){
     return normalize(vec3(xDiff,yDiff,zDiff));
 }
 
-vec3 integrate(in vec3 ro, in vec3 rd, in out float t0, in out float t1)
+vec3 integrate(in vec3 ro, in vec3 rd)
 {
     float step_size = 0.2;
-    float sigma_a = 0.5; //absorption
-    float sigma_s = 0.5; //scattering
+    float sigma_a = 0.9; //absorption
+    float sigma_s = 0.9; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
-    float phase_g = 0.5; //phase function g factor
+    float phase_g = 0.; //phase function g factor
+
+    Ray vr = Ray(ro, rd);
+    Sphere sphere = Sphere(SPHERES[0], 1., 0);
+    Hit view_sphere_hit;
+    bool sphere_hit = intersect_sphere_test(vr, sphere, view_sphere_hit);
+    if(!sphere_hit) return BGC;
+
+    float t0 = view_sphere_hit.t0;
+    float t1 = view_sphere_hit.t1;
 
     int ns = int(ceil((t1 - t0) / step_size));
     step_size = (t1 - t0) / ns;
-
-    Sphere sphere = Sphere(SPHERES[0], 1., 0);
 
 
     float transparency = 1; // initialize transparency to 1
     vec3 result = vec3(0.0); // initialize the volume color to 0
 
+    //TODO temp for testing
     vec3 currPos = t0 * rd + ro;
 
     for (int n = 0; n < ns; n++)
     {
-        //russian roulette once transparancy too low: kill some samples but 
-        //increase the transparency for surviving samples
-        // number 5: 1 out of 5 samples survives on average.
-        if (transparency < 1e-3) {
-            if (rand(ro.xy) > 1.f / 5) // we stop here
-                break;
-            else
-                transparency *= 5; // we continue but compensate
-        }
 
         float t = t0 + step_size * (n + rand(ro.xy));
         vec3 sample_pos= ro + t * rd; // sample position (middle of the step)
@@ -193,7 +221,7 @@ vec3 integrate(in vec3 ro, in vec3 rd, in out float t0, in out float t1)
         bool hit = intersect_sphere_inside(lr, sphere, lh0, lh1);
         
 
-        float density = (noise(sample_pos.x, sample_pos.y, sample_pos.z) + 1)/2.; //perlin noise shifted to [0, 1]
+        float density = (fbm3(sample_pos) + 1)/2.; //perlin noise shifted to [0, 1]
         // compute sample transparency using Beer's law
         float sample_transparency = exp(- density * step_size * sigma_t);
         
@@ -212,19 +240,30 @@ vec3 integrate(in vec3 ro, in vec3 rd, in out float t0, in out float t1)
         {
                 float t_light = stride_light * (nl + 0.5);
                 vec3 light_sample_pos = sample_pos + sampleToLight * t_light;
-                tau += noise(light_sample_pos.x, light_sample_pos.y, light_sample_pos.z);
+                tau += (fbm3(light_sample_pos) + 1)/2.;
         }
         float light_attenuation = exp(-tau * stride_light * sigma_t);
         float cos_v_l = dot(-rd, sampleToLight);
         result += LIGHT_COLOR * light_attenuation * density * step_size * sigma_s * phase(phase_g, cos_v_l) * transparency;
 
         // finally attenuate the result by sample transparency
-        //result *= sample_transparency;
+        result *= sample_transparency;
 
-        //result += lh1/ns;
+
+        //russian roulette once transparancy too low: kill some samples but 
+        //increase the transparency for surviving samples
+        // number 5: 1 out of 5 samples survives on average.
+        if (transparency < 1e-3) {
+            if (rand(ro.xy) > 1.f / 5) // we stop here
+                break;
+            else
+                transparency *= 5; // we continue but compensate
+        }
+
     }
-    //return result;   
-    return vec3(eval_density(currPos, SPHERES[0], 1.));
+    //return result;  
+    //return vec3(fbm3(currPos, 3, 5.0, 1.0));
+    //return vec3(eval_density(currPos, SPHERES[0], 1.));
     return BGC * transparency + result;
 }
 
@@ -254,7 +293,7 @@ vec3 ray_march_volume(in vec3 ro, in vec3 rd)
                 return updated;
             }
             //return vec3(t1/10., 0., 0.);
-            return integrate(ro, rd, t0, t1);
+            //return integrate(ro, rd);
         }
 
 
@@ -351,48 +390,10 @@ void main() {
     vec3 rdy = ca * normalize( vec3(py,fl) );
         
 
-    vec3 shaded_color = ray_march_volume(ro, rd);
+    vec3 shaded_color = integrate(ro, rd);
     color = vec4(shaded_color, 1.0);
 }
 
-
-//Noise function from Scratchapixel,
-//density evaluation inspired by Scratchapixel
-int p[512]; // permutation table (see source code)
- 
-float fade(float t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-float lerp(float t, float a, float b) { return a + t * (b - a); }
-float grad(int hash, float x, float y, float z)
-{
-    int h = hash & 15;
-    float u = h<8 ? x : y,
-           v = h<4 ? y : h==12||h==14 ? x : z;
-    return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
-}
- 
-float noise(float x, float y, float z)
-{
-    int X = int(floor(x)) & 255;
-    int Y = int(floor(y)) & 255,
-        Z = int(floor(z)) & 255;
-    x -= floor(x);
-    y -= floor(y);
-    z -= floor(z);
-    float u = fade(x),
-           v = fade(y),
-           w = fade(z);
-    int A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
-        B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
- 
-    return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ),
-                                   grad(p[BA  ], x-1, y  , z   )),
-                           lerp(u, grad(p[AB  ], x  , y-1, z   ),
-                                   grad(p[BB  ], x-1, y-1, z   ))),
-                   lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),
-                                   grad(p[BA+1], x-1, y  , z-1 )),
-                           lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
-                                   grad(p[BB+1], x-1, y-1, z-1 ))));
-}
 
 float eval_density(vec3 p, vec3 center, float radius)
 { 
@@ -414,7 +415,7 @@ float eval_density(vec3 p, vec3 center, float radius)
 	float fbmResult = 0;
 	float offset = 0.75;
 	for (int k = 0; k < octaves; k++) {
-		fbmResult += noise(vp_xform.x , vp_xform.y, vp_xform.z) * pow(lacunarity, -H * k);
+		fbmResult += cnoise(vp_xform) * pow(lacunarity, -H * k);
         vp_xform *= lacunarity;
 	}
     return max(0.f, fbmResult) * (1 - falloff);//(1 - falloff);//std::max(0.f, fbmResult);// * (1 - falloff));

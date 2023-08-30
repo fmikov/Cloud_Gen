@@ -1,9 +1,9 @@
 #include "Shader.h"
+#include "Shaderinclude.h"
 
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <sstream>
 
 #include "../utils/Renderer.h"
 
@@ -16,7 +16,7 @@ struct ShaderProgramSource {
 
 Shader::Shader(const std::string& fs, const std::string& vs)
 	: m_RendererID(0) {
-	ShaderProgramSource source = { ParseFile(fs), ParseFile(vs) };
+	ShaderProgramSource source = { Shaderinclude::load(fs), Shaderinclude::load(vs) };
 	m_RendererID = CreateShader(source.VertexSource, source.FragmentSource);
 }
 

@@ -183,7 +183,8 @@
     <None Include="res\shaders\basic.vert.glsl" />
     <None Include="res\shaders\clouds.frag.glsl" />
     <None Include="res\shaders\raymarch.vert.glsl" />
-    <None Include="res\shaders\utils.glsl" />
+    <None Include="res\shaders\shader_includes\noise.glsl" />
+    <None Include="res\shaders\shader_includes\utils.glsl" />
     <None Include="utils\glm\detail\func_common.inl" />
     <None Include="utils\glm\detail\func_common_simd.inl" />
     <None Include="utils\glm\detail\func_exponential.inl" />
@@ -628,6 +629,7 @@
     <ClInclude Include="utils\IndexBuffer.h" />
     <ClInclude Include="utils\Renderer.h" />
     <ClInclude Include="utils\Shader.h" />
+    <ClInclude Include="utils\Shaderinclude.h" />
     <ClInclude Include="utils\stb\stb_image.h" />
     <ClInclude Include="utils\Texture.h" />
     <ClInclude Include="utils\VertexArray.h" />
