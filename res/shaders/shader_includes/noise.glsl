@@ -194,3 +194,30 @@ float fbm3(vec3 pos, int octaves = 3, float frequency = 5., float amplitude = 1.
     return fbm;
 }
 
+//scratchapixel
+float eval_density(in vec3 p, in vec3 center,  in float radius)
+{ 
+    vec3 vp = p - center;
+    vec3 vp_xform;
+
+    float theta = (2. - 1.) / 120.0 * 2 * 3.14159265358979323846;
+    vp_xform.x =  cos(theta) * vp.x + sin(theta) * vp.z;
+    vp_xform.y = vp.y;
+    vp_xform.z = -sin(theta) * vp.x + cos(theta) * vp.z;
+
+	float dist = min(1., length(vp) / radius);
+	float falloff = smoothstep(0.8, 1., dist);
+    float freq = 0.5;
+	int octaves = 5;
+	float lacunarity = 2.;
+	float H = 0.4;
+    vp_xform *= freq;
+	float fbmResult = 0.;
+	float offset = 0.75;
+	for (int k = 0; k < octaves; k++) {
+		fbmResult += cnoise(vp_xform) * pow(lacunarity, -H * k);
+        vp_xform *= lacunarity;
+	}
+    return (fbmResult + 1)/2.;
+}
+

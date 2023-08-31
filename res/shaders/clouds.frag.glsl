@@ -116,7 +116,8 @@ bool intersect_sphere_test(
 	vec3 rc = sphere.c - ray.ro;
 	float radius2 = sphere.r * sphere.r;
 	float tca = dot(rc, ray.rd);
-    if (tca < 0.) return false;
+    //this line breaks intersection if we start the ray inside the sphere
+    //if (tca < 0.) return false;
 
 	float d2 = dot(rc, rc) - tca * tca;
 	if (d2 > radius2)
@@ -125,6 +126,7 @@ bool intersect_sphere_test(
 	float thc = sqrt(radius2 - d2);
 	hit.t0 = tca - thc;
 	hit.t1 = tca + thc;
+
 
     if (hit.t0 < 0) {
             if (hit.t1 < 0) return false;
@@ -156,7 +158,6 @@ float phase(float g, float cos_theta)
 
 vec3 blinn_phong(vec3 currPos, vec3 viewDir, vec3 normal);
 float map(vec3 currPos);
-float eval_density(vec3 p, vec3 center, float radius);
 
 float distance_from_sphere(in vec3 p, in vec3 c, float r)
 {
@@ -185,10 +186,11 @@ vec3 estimateNormal(vec3 p){
 vec3 integrate(in vec3 ro, in vec3 rd)
 {
     float step_size = 0.1;
+    float step_size_light = 0.05;
     float sigma_a = 0.9; //absorption
     float sigma_s = 0.9; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
-    float phase_g = 0.; //phase function g factor
+    float phase_g = 0.8; //phase function g factor
 
     Ray vr = Ray(ro, rd);
     Sphere sphere = Sphere(SPHERES[0], 1., 0);
@@ -208,11 +210,12 @@ vec3 integrate(in vec3 ro, in vec3 rd)
 
     //TODO temp for testing
     vec3 currPos = t0 * rd + ro;
+    //return vec3(eval_density(currPos, sphere.c, sphere.r));
 
     for (int n = 0; n < ns; n++)
     {
 
-        float t = t0 + step_size * (n + rand(ro.xy));
+        float t = t0 + step_size * (n + rand(ro));
         vec3 sample_pos= ro + t * rd; // sample position (middle of the step)
         vec3 sampleToLight = normalize(LIGHT_POS - sample_pos); //ray from sample to light
         Ray lr = Ray(sample_pos, sampleToLight);
@@ -221,9 +224,10 @@ vec3 integrate(in vec3 ro, in vec3 rd)
         float lh0 = sample_light_hit.t0;
         float lh1 = sample_light_hit.t1;
         
-        if(true){
+        if(sample_light_hit.inside && light_hit){
 
-            float density = (fbm3(sample_pos) + 1)/2.; //perlin noise shifted to [0, 1]
+            //float density = (fbm3(sample_pos) + 1)/2.; //perlin noise shifted to [0, 1]
+            float density = eval_density(sample_pos, sphere.c, sphere.r);
             // compute sample transparency using Beer's law
             float sample_transparency = exp(- density * step_size * sigma_t);
             // attenuate global transparency by sample transparency
@@ -234,25 +238,26 @@ vec3 integrate(in vec3 ro, in vec3 rd)
             // the volume to our sample point. Then apply Beer's law.
 
             //should add condition to check if ray hits the light source?
-            int num_steps_light = int(ceil(lh1 / step_size));
+            int num_steps_light = int(ceil(lh1 / step_size_light));
             float stride_light = lh1 / num_steps_light;
             float tau = 0;
             for (int nl = 0; nl < num_steps_light; ++nl) 
             {
                     float t_light = stride_light * (nl + 0.5);
                     vec3 light_sample_pos = sample_pos + sampleToLight * t_light;
-                    tau += (fbm3(light_sample_pos) + 1)/2.;
+                    tau += eval_density(light_sample_pos, sphere.c, sphere.r);
+                    //tau += (fbm3(light_sample_pos) + 1)/2.;
             }
             float light_attenuation = exp(-tau * stride_light * sigma_t);
             float cos_v_l = dot(-rd, sampleToLight);
-            result += LIGHT_COLOR * light_attenuation * density * step_size * sigma_s * phase(phase_g, cos_v_l) * transparency;
+            result += LIGHT_COLOR * light_attenuation * density * step_size_light * sigma_s * phase(phase_g, cos_v_l) * transparency;
         }
 
         //russian roulette once transparancy too low: kill some samples but 
         //increase the transparency for surviving samples
         // number 5: 1 out of 5 samples survives on average.
         if (transparency < 1e-3) {
-            if (rand(sample_pos.xy) > 1.f / 5) // we stop here
+            if (rand(sample_pos) > 1.f / 5) // we stop here
                 break;
             else
                 transparency *= 5; // we continue but compensate
@@ -392,30 +397,4 @@ void main() {
     color = vec4(shaded_color, 1.0);
 }
 
-
-float eval_density(vec3 p, vec3 center, float radius)
-{ 
-    vec3 vp = p - center;
-    vec3 vp_xform;
-
-    float theta = (2 - 1) / 120.f * 2 * PI;
-    vp_xform.x =  cos(theta) * vp.x + sin(theta) * vp.z;
-    vp_xform.y = vp.y;
-    vp_xform.z = -sin(theta) * vp.x + cos(theta) * vp.z;
-
-	float dist = min(1.f, length(vp)/ radius);
-	float falloff = smoothstep(0.8, 1, dist);
-    float freq = 0.5;
-	int octaves = 5;
-	float lacunarity = 2;
-	float H = 0.4;
-    vp_xform *= freq;
-	float fbmResult = 0;
-	float offset = 0.75;
-	for (int k = 0; k < octaves; k++) {
-		fbmResult += cnoise(vp_xform) * pow(lacunarity, -H * k);
-        vp_xform *= lacunarity;
-	}
-    return max(0.f, fbmResult) * (1 - falloff);//(1 - falloff);//std::max(0.f, fbmResult);// * (1 - falloff));
-}
 
