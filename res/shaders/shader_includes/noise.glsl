@@ -194,7 +194,7 @@ float fbm3(vec3 pos, int octaves = 3, float frequency = 5., float amplitude = 1.
     return fbm;
 }
 
-//scratchapixel
+//from scratchapixel
 float eval_density(in vec3 p, in vec3 center,  in float radius)
 { 
     vec3 vp = p - center;

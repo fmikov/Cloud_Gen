@@ -185,6 +185,7 @@
     <None Include="res\shaders\raymarch.vert.glsl" />
     <None Include="res\shaders\shader_includes\noise.glsl" />
     <None Include="res\shaders\shader_includes\utils.glsl" />
+    <None Include="res\shaders\temp.glsl" />
     <None Include="utils\glm\detail\func_common.inl" />
     <None Include="utils\glm\detail\func_common_simd.inl" />
     <None Include="utils\glm\detail\func_exponential.inl" />
