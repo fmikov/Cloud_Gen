@@ -8,18 +8,29 @@
 #include <string>
 #include <sstream>
 
-#include "../utils/Texture.h"
-#include "../utils/IndexBuffer.h"
-#include "../utils/VertexBuffer.h"
-#include "../utils/VertexArray.h"
-#include "../utils/Shader.h"
-#include "../utils/Renderer.h"
+#include "Camera.h"
+#include "CameraInputHandler.h"
+#include "Texture.h"
+#include "IndexBuffer.h"
+#include "VertexBuffer.h"
+#include "VertexArray.h"
+#include "Shader.h"
+#include "Renderer.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
+
+#include "Global.h"
+#include "gtc/matrix_inverse.hpp"
+
+
+
+double xc, yc;
+void MouseDragCallback(GLFWwindow* window, double xpos, double ypos);
+
 
 int main(void)
 {
@@ -33,7 +44,8 @@ int main(void)
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(1920, 1080, "Hello World", NULL, NULL);
+	const vec2 RESOLUTION = { 1920.f, 1080.f };
+	window = glfwCreateWindow(RESOLUTION.x, RESOLUTION.y, "Hello World", NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
@@ -57,10 +69,10 @@ int main(void)
 
 
 	float positions[] = {
-		-0.5f, -0.5f, 0.0f, 0.0f,
-		 0.5f, -0.5f, 1.0f, 0.0f,
-		 0.5f,  0.5f, 1.0f, 1.0f,
-		-0.5f,  0.5f, 0.0f, 1.0f
+		-1.0f, -1.0f,
+		 1.0f, -1.0f,
+		 1.0f,  1.0f,
+		-1.0f,  1.0f,
 	};
 
 	unsigned int indices[]{
@@ -77,35 +89,40 @@ int main(void)
 	glBindVertexArray(vao);
 
 	VertexArray va;
-	VertexBuffer vb(positions, 4 * 4 * sizeof(float));
+	VertexBuffer vb(positions, 4 * 2 * sizeof(float));
 	VertexBufferLayout layout;
 	layout.Push(GL_FLOAT, 2);
-	layout.Push(GL_FLOAT, 2);
 	va.AddBuffer(vb, layout);
-
 
 	IndexBuffer ib(indices, 6);
 
 	//converts into [-1, -1] range
 	glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	//mat4 proj = perspective(radians(45.0f), RESOLUTION.x/RESOLUTION.y, 0.0f, 100.0f);
+	mat4 view = glm::translate(glm::mat4(0.0f), glm::vec3(0.0f, 0.0f, -4.0f)); //camera
+	mat4 model = mat4(1.f);
+
+	mat4 mvp = proj * view * model;
 	
+	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
 
 
-	Shader shader = {"res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl"};
-	shader.Bind();
-	shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
+	shader_march.Bind();
+	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
+	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
+	// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+	// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+	// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+	// shader_march.SetUniformMat4f("u_MVP", mvp);
 
-	Texture texture("res/bark.png");
-	texture.Bind();
-	shader.SetUniform1i("u_Texture", 0);
+
 
 	va.Unbind();
 	ib.Unbind();
 	vb.Unbind();
-	shader.Unbind();
+	shader_march.Unbind();
 
-	//imgui setup
+	// --------------------------------------------- imgui setup
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -117,16 +134,23 @@ int main(void)
 
 	ImGui::StyleColorsDark();
 
-	bool show_demo_window = true;
+	bool show_demo_window = false;
 	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-	float r = 0.0f;
-	float increment = 0.05f;
+	// ----------------------------------------------
 
-	glm::vec3 translation(0.2f, 0.2f, 0.0f);
 
 	Renderer renderer;
+	view = camera.GetLookAtMatrix();
+	proj = camera.GetPerspectiveMatrix();
+
+
+	//input
+	glfwSetCursorPosCallback(window, MouseDragCallback);
+	//glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
+	//glfwSetKeyCallback(window, CameraInputHandler::KeyboardMovementCallback);
+
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -138,30 +162,38 @@ int main(void)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
+		currFrame = glfwGetTime();
+		deltaTime = currFrame - lastFrame;
+		lastFrame = currFrame;
 
-		glm::mat4 mvp = proj * view * model; //multiplication right to left
+		
+		//process keyboard input for camera
+		camera.ProcessKeyboard();
+
+		view = camera.GetWalkMatrix();
+		proj = camera.GetPerspectiveMatrix();
+
+		mvp = proj * view * model; //multiplication right to left
+
+		shader_march.Bind();
+		shader_march.SetUniformMat4f("u_MVP", mvp);
+		shader_march.SetUniformMat4f("u_MVP_inverse", glm::inverse(proj*view));
+		shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
+		shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
+		shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
+		shader_march.SetUniformVec3f("u_CameraUp", camera.m_camera_up());
+		shader_march.SetUniform1f("u_Time", currFrame);
 
 
-		shader.Bind();
-		//shader.SetUniform4f("u_Color", r, 0.3f, 0.8f, 1.0f);
-		shader.SetUniformMat4f("u_MVP", mvp);
-		renderer.Draw(va, ib, shader);
-		model = glm::translate(glm::mat4(1.0f), -translation);
-		mvp = proj * view * model;
-		shader.SetUniformMat4f("u_MVP", mvp);
-		renderer.Draw(va, ib, shader);
+		shader_march.SetUniform2f("u_Mouse", xc, yc);
 
-		if (r > 1.0f)
-		{
-			increment = -0.05f;
-		}
-		else if (r < 0.0f)
-		{
-			increment = 0.05f;
-		}
-		r += increment;
+		renderer.Draw(va, ib, shader_march);
 
+
+		
+
+		//std::cout << xc << " " << yc << std::endl;
+		
 
 		if (show_demo_window)
 			ImGui::ShowDemoWindow(&show_demo_window);
@@ -175,7 +207,6 @@ int main(void)
 			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 			ImGui::Checkbox("Another Window", &show_another_window);
 
-			ImGui::SliderFloat3("Translation", &translation.x, -2.0f, 2.0f);
 			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
 			ImGui::ColorEdit3("clear color", (float*)&clear_color);
 
@@ -189,7 +220,7 @@ int main(void)
 		}
 
 		ImGui::Render();
-		int display_w, display_h;
+		//int display_w, display_h;
 		//glfwGetFramebufferSize(window, &display_w, &display_h);
 		//glViewport(0, 0, display_w, display_h);
 		//glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
@@ -210,4 +241,22 @@ int main(void)
 
 	glfwTerminate();
 	return 0;
+}
+
+
+void MouseDragCallback(GLFWwindow* window, double xpos, double ypos) {
+	bool lButtonDown = false;
+	int mouseAction = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+	if (mouseAction == GLFW_PRESS) {
+		lButtonDown = true;
+	}
+	if (mouseAction == GLFW_RELEASE) {
+		lButtonDown = false;
+	}
+
+	if (lButtonDown)
+	{
+		xc = xpos;
+		yc = ypos;
+	}
 }

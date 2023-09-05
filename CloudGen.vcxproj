@@ -149,6 +149,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\application.cpp" />
+    <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\Noise.cpp" />
     <ClCompile Include="utils\Debugging.cpp" />
     <ClCompile Include="utils\glm\detail\glm.cpp" />
     <ClCompile Include="utils\imgui\imgui.cpp" />
@@ -177,9 +179,13 @@
     <None Include="Dependencies\GLEW\doc\install.html" />
     <None Include="Dependencies\GLEW\doc\log.html" />
     <None Include="Dependencies\GLEW\doc\wglew.html" />
-    <None Include="res\shaders\Basic.shader" />
     <None Include="res\shaders\basic.frag.glsl" />
     <None Include="res\shaders\basic.vert.glsl" />
+    <None Include="res\shaders\clouds.frag.glsl" />
+    <None Include="res\shaders\raymarch.vert.glsl" />
+    <None Include="res\shaders\shader_includes\noise.glsl" />
+    <None Include="res\shaders\shader_includes\utils.glsl" />
+    <None Include="res\shaders\temp.glsl" />
     <None Include="utils\glm\detail\func_common.inl" />
     <None Include="utils\glm\detail\func_common_simd.inl" />
     <None Include="utils\glm\detail\func_exponential.inl" />
@@ -324,6 +330,11 @@
     <ClInclude Include="Dependencies\GLEW\include\GL\wglew.h" />
     <ClInclude Include="Dependencies\GLFW\include\GLFW\glfw3.h" />
     <ClInclude Include="Dependencies\GLFW\include\GLFW\glfw3native.h" />
+    <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\CameraInputHandler.h" />
+    <ClInclude Include="src\Global.h" />
+    <ClInclude Include="src\Noise.h" />
+    <ClInclude Include="src\NoiseMath.h" />
     <ClInclude Include="utils\Debugging.h" />
     <ClInclude Include="utils\glm\common.hpp" />
     <ClInclude Include="utils\glm\detail\compute_common.hpp" />
@@ -619,6 +630,7 @@
     <ClInclude Include="utils\IndexBuffer.h" />
     <ClInclude Include="utils\Renderer.h" />
     <ClInclude Include="utils\Shader.h" />
+    <ClInclude Include="utils\Shaderinclude.h" />
     <ClInclude Include="utils\stb\stb_image.h" />
     <ClInclude Include="utils\Texture.h" />
     <ClInclude Include="utils\VertexArray.h" />
