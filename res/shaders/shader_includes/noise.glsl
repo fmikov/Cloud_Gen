@@ -14,6 +14,9 @@
 // https://github.com/stegu/webgl-noise
 //
 
+uniform float u_Time;
+
+
 vec3 mod289(vec3 x)
 {
   return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -207,6 +210,7 @@ float eval_density(in vec3 p, in vec3 center,  in float radius)
 
 	float dist = min(1., length(vp) / radius);
 	float falloff = smoothstep(0.8, 1., dist);
+
     float freq = 0.5;
 	int octaves = 5;
 	float lacunarity = 2.;
@@ -218,6 +222,6 @@ float eval_density(in vec3 p, in vec3 center,  in float radius)
 		fbmResult += cnoise(vp_xform) * pow(lacunarity, -H * k);
         vp_xform *= lacunarity;
 	}
-    return (fbmResult + 1)/2.;
+    return max(0.0, fbmResult) * (1-falloff);
 }
 

@@ -15,14 +15,10 @@ uniform vec3 u_CameraUp;
 uniform mat4 u_MVP;
 uniform mat4 u_MVP_inverse;
 uniform vec2 u_Mouse;
-uniform float u_Time;
+//uniform float u_Time;
 
 
-in vec4 near_4;   
-in vec4 far_4;
 in vec2 v_TexCoord;
-in vec3 origin;
-in vec3 ray_dir;
 
 const int NUMBER_OF_STEPS = 128;
 const float MINIMUM_HIT_DISTANCE = 0.001;
@@ -31,32 +27,13 @@ const float MAXIMUM_TRACE_DISTANCE = 10000.0;
 const vec3 LIGHT_POS = vec3(2.0, 3.0, 0.0);
 const vec3 SPHERES[1] = vec3[](vec3(0.0, -1.0, 0.0));
 const vec3 LIGHT_COLOR = vec3(20, 20, 20);
+const vec3 LIGHT_DIR = normalize(vec3(0.0, -1.0, 0.5));
 const float LIGHT_INTENSITY = 20;
 const vec3 BGC = vec3(0.572, 0.772, 0.921);
 
 #define PI 3.14159265358979323846
 
-struct Ray
-{
-    vec3 ro;
-    vec3 rd;
-};
 
-struct Sphere
-{
-    vec3 c;
-    float r;
-    int material;
-};
-
-struct Hit {
-	float t0;
-    float t1;
-	int material_id;
-	vec3 normal;
-	vec3 origin;
-    bool inside;
-};
 
 
 bool intersect_sphere_test(
@@ -93,10 +70,10 @@ bool intersect_sphere_test(
 
 
 // the Henyey-Greenstein phase function
-float phase(float g, float cos_theta)
+float phase(float g, vec3 view_dir, vec3 light_dir)
 {
-    float denom = 1 + g * g - 2 * g * cos_theta;
-    return 1 / (4 * PI) * (1 - g * g) / (denom * sqrt(denom));
+    float cos_theta = dot(view_dir, light_dir);
+    return 1 / (4 * PI) * (1 - g * g) / pow(1 + g * g - 2 * g * cos_theta, 1.5);
 }
 
 float map(vec3 currPos);
@@ -113,9 +90,9 @@ float distanceFromPlane(in vec3 p){
 
 vec3 integrate(in vec3 ro, in vec3 rd)
 {
-    float step_size = 0.1;
-    float step_size_light = 0.05;
-    float sigma_a = 0.9; //absorption
+    float step_size = 0.2;
+    float step_size_light = 0.1;
+    float sigma_a = 3.9; //absorption
     float sigma_s = 0.9; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
     float phase_g = 0.8; //phase function g factor
@@ -139,23 +116,38 @@ vec3 integrate(in vec3 ro, in vec3 rd)
     for (int n = 0; n < ns; n++)
     {
 
-        float t = t0 + step_size * (n + rand(ro));
+        float t = t0 + step_size * (n + rand(vec3(n, n, n)));
         vec3 sample_pos= ro + t * rd; // sample position (middle of the step)
-        vec3 sampleToLight = normalize(LIGHT_POS - sample_pos); //ray from sample to light
+        vec3 sampleToLight = -LIGHT_DIR; //ray from sample to light
         Ray lr = Ray(sample_pos, sampleToLight);
         Hit sample_light_hit;
         bool light_hit = intersect_sphere_test(lr, sphere, sample_light_hit);
         float lh0 = sample_light_hit.t0;
         float lh1 = sample_light_hit.t1;
         
-        if(sample_light_hit.inside && light_hit){
+        float density = eval_density(sample_pos, sphere.c, sphere.r);
+
+        if(density > 0. && sample_light_hit.inside && light_hit){
 
             //float density = (fbm3(sample_pos) + 1)/2.; //perlin noise shifted to [0, 1]
-            float density = eval_density(sample_pos, sphere.c, sphere.r);
             // compute sample transparency using Beer's law
             float sample_transparency = exp(- density * step_size * sigma_t);
             // attenuate global transparency by sample transparency
             transparency *= sample_transparency;
+
+            //russian roulette once transparancy too low: kill some samples but 
+            //increase the transparency for surviving samples
+            // number 5: 1 out of 5 samples survives on average.
+            if (transparency < 1e-3) {
+                if (rand(sample_pos) > 1.f / 5) // we stop here
+                {   
+                    transparency = 0.0;
+                    break;
+                }
+                else
+                    transparency /= 5; // we continue but compensate
+            }
+
 
             // In-scattering. 
             //Find the distance traveled by light through 
@@ -165,27 +157,18 @@ vec3 integrate(in vec3 ro, in vec3 rd)
             int num_steps_light = int(ceil(lh1 / step_size_light));
             float stride_light = lh1 / num_steps_light;
             float tau = 0;
+            float t_light = 0.;
             for (int nl = 0; nl < num_steps_light; ++nl) 
             {
-                    float t_light = stride_light * (nl + 0.5);
+                    t_light += stride_light;
                     vec3 light_sample_pos = sample_pos + sampleToLight * t_light;
                     tau += eval_density(light_sample_pos, sphere.c, sphere.r);
-                    //tau += (fbm3(light_sample_pos) + 1)/2.;
             }
-            float light_attenuation = exp(-tau * stride_light * sigma_t);
-            float cos_v_l = dot(-rd, sampleToLight);
-            result += LIGHT_COLOR * light_attenuation * density * step_size_light * sigma_s * phase(phase_g, cos_v_l) * transparency;
+            float light_attenuation = exp(-tau / num_steps_light * sigma_t);
+            result += LIGHT_COLOR * light_attenuation * density * step_size_light * sigma_s * transparency;
         }
 
-        //russian roulette once transparancy too low: kill some samples but 
-        //increase the transparency for surviving samples
-        // number 5: 1 out of 5 samples survives on average.
-        if (transparency < 1e-3) {
-            if (rand(sample_pos) > 1.f / 5) // we stop here
-                break;
-            else
-                transparency *= 5; // we continue but compensate
-        }
+        
 
     }
     return BGC * transparency + result;
