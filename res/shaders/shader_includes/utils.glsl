@@ -25,6 +25,44 @@ struct Hit {
 };
 
 
+float smooth_min( float d1, float d2, float k ) 
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h); 
+}
+
+//ray sphere intersect
+bool intersect_sphere_test(
+	Ray ray,
+	Sphere sphere,
+	in out Hit hit
+){
+	vec3 rc = sphere.c - ray.ro;
+	float radius2 = sphere.r * sphere.r;
+	float tca = dot(rc, ray.rd);
+    //this line breaks intersection if we start the ray inside the sphere
+    //if (tca < 0.) return false;
+
+	float d2 = dot(rc, rc) - tca * tca;
+	if (d2 > radius2)
+		return false;
+
+	float thc = sqrt(radius2 - d2);
+	hit.t0 = tca - thc;
+	hit.t1 = tca + thc;
+
+
+    if (hit.t0 < 0) {
+            if (hit.t1 < 0) return false;
+            else {
+                hit.inside = true;
+                hit.t0 = 0;
+            }
+        }
+
+    return true;
+}
+
 
 // ray-box intersection from iq
 vec2 intersect_box( in vec3 ro, in vec3 rd, in vec3 cen, in vec3 rad ) 

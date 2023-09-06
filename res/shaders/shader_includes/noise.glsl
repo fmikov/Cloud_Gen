@@ -187,30 +187,54 @@ float hash( float n )
     return fract(sin(n)*43758.5453);
 }
 
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
+float hash1( float n )
+{
+    return fract( n*17.0*fract( n*0.3183099 ) );
+}
+
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
 float noise( in vec3 x )
 {
     vec3 p = floor(x);
-    vec3 f = fract(x);
+    vec3 w = fract(x);
+    
+    vec3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    
+    float n = p.x + 317.0*p.y + 157.0*p.z;
+    
+    float a = hash1(n+0.0);
+    float b = hash1(n+1.0);
+    float c = hash1(n+317.0);
+    float d = hash1(n+318.0);
+    float e = hash1(n+157.0);
+	float f = hash1(n+158.0);
+    float g = hash1(n+474.0);
+    float h = hash1(n+475.0);
 
-    f = f*f*(3.0-2.0*f);
+    float k0 =   a;
+    float k1 =   b - a;
+    float k2 =   c - a;
+    float k3 =   e - a;
+    float k4 =   a - b - c + d;
+    float k5 =   a - c - e + g;
+    float k6 =   a - b - e + f;
+    float k7 = - a + b + c - d + e - f - g + h;
 
-    float n = p.x + p.y*57.0 + 113.0*p.z;
-
-    float res = mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
-                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
-                    mix(mix( hash(n+113.0), hash(n+114.0),f.x),
-                        mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
-    return res;
+    return -1.0+2.0*(k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z);
 }
 
-float fbm3(vec3 pos, int octaves = 3, float frequency = 5., float amplitude = 1.) {
+float fbm3(in vec3 pos, int octaves = 3, float frequency = 1., float amplitude = 1., float scale = 1) {
+    pos *= scale;
     float fbm = 0.0;
 
     float gain = 0.5; //how much each octave contributes
     float lacunarity = 2.0; //how much the frequency changes over octaves
 
     for (int i = 0; i < octaves; i++) {
-        fbm += amplitude * cnoise(pos * frequency);
+        fbm += amplitude * noise(pos * frequency);
 
         frequency *= lacunarity;
         amplitude *= gain;
