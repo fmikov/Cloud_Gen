@@ -214,7 +214,7 @@ void main()
     vec2 p = (2.0*fragCoord-u_Resolution.xy)/u_Resolution.y;
 
     // focal length
-    const float fl = 2.5;
+    const float fl = 1.5;
         
     // ray direction
     vec3 rd = ca * normalize( vec3(p,fl) );
