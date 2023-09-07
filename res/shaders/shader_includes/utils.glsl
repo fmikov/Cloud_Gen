@@ -24,6 +24,37 @@ struct Hit {
     bool inside;
 };
 
+//------------------ from shadertoy, refactor later
+
+//beer lambert function
+float BeerLambert(float absorption, float dist)
+{
+    return exp(-absorption * dist);
+}
+
+//TODO check this
+float GetLightAttenuation(float distanceToLight)
+{
+    return 1.0 / pow(distanceToLight, 2.0);
+}
+
+float Luminance(vec3 color)
+{
+    return (color.r * 0.3) + (color.g * 0.59) + (color.b * 0.11);
+}
+
+bool IsColorInsignificant(vec3 color)
+{
+    const float minValue = 0.009;
+    return Luminance(color) < minValue;
+}
+
+
+
+
+
+//----------------------------------------------------------------
+
 
 float smooth_min( float d1, float d2, float k ) 
 {

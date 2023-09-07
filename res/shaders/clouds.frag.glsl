@@ -21,6 +21,7 @@ uniform vec2 u_Mouse;
 in vec2 v_TexCoord;
 
 const int NUMBER_OF_STEPS = 128;
+const int STEPS_SHADOW = 8;
 const float MINIMUM_HIT_DISTANCE = 0.001;
 const float MAXIMUM_TRACE_DISTANCE = 10000.0;
 
@@ -28,6 +29,7 @@ const vec3 LIGHT_POS = vec3(2.0, 3.0, 0.0);
 const vec3 SPHERES[3] = vec3[](vec3(2.0, -1.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, -1.0, 2.0));
 const vec3 LIGHT_COLOR = vec3(20, 20, 20);
 const vec3 LIGHT_DIR = normalize(vec3(0.0, -1.0, 0.5));
+const vec3 LIGHTS[1] = vec3[](LIGHT_POS);
 const float LIGHT_INTENSITY = 20;
 const vec3 BGC = vec3(0.572, 0.772, 0.921);
 
@@ -67,6 +69,21 @@ float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15)
     return ( t>=maxT ) ? -1.0 : t;
 }
 
+//TODO move to utils
+float GetFogDensity(vec3 position, float sdfDistance)
+{
+    const float maxSDFMultiplier = 1.0;
+    bool insideSDF = sdfDistance < 0.0;
+    float sdfMultiplier = insideSDF ? min(abs(sdfDistance), maxSDFMultiplier) : 0.0;
+ 
+#if UNIFORM_FOG_DENSITY
+    return sdfMultiplier;
+#else
+   return sdfMultiplier * abs(fbm3(position / 6.0) + 0.5);
+#endif
+}
+
+
 
 
 vec3 integrate(in vec3 ro, in vec3 rd)
@@ -82,7 +99,6 @@ vec3 integrate(in vec3 ro, in vec3 rd)
     Sphere sphere = Sphere(SPHERES[0], 1., 0);
     Hit view_sphere_hit;
 
-    float transparency = 1; // initialize transparency to 1
 
 
 
@@ -91,45 +107,67 @@ vec3 integrate(in vec3 ro, in vec3 rd)
 
 
     float density = 0.0;
+    float transparency = 1; // initialize transparency to 1
 
     vec3 pos = ro + rd * volumeDepth;
-    vec3 color = vec3(0.0);
-    float distanceInVolume = 0.0f;
+
+    const float MARCH_MULTIPLIER = 0.5;
+    vec3 color = vec3(0.0); //final color
+    const vec3 volumeAlbedo = vec3(0.8);
+    const float marchSize = 0.6 * MARCH_MULTIPLIER;
+    float distanceInVolume = 0.0;
     float signedDistance = 0.0;
 
     for (int n = 0; n < NUMBER_OF_STEPS; n++)
     {
         
-        volumeDepth += signedDistance;
+        volumeDepth += max(signedDistance, 0.1);
 
-        float dist = map(pos);
-
-        if(dist < MINIMUM_HIT_DISTANCE) return vec3(1.0);
+        float signedDistance = map(pos);
+        pos = ro + volumeDepth * rd;
 
         float d = eval_density(pos, sphere.c, sphere.r);
-        if(false && d < 0.1)
+        if(signedDistance < 0.0)
         {
-            vec3 lpos = pos - LIGHT_DIR * hash(u_Time) * shadowStepLength;
-            float shadow = 0.;
-    
-            for (int s = 0; s < shadow_steps; s++)
-            {
-                lpos += -LIGHT_DIR * shadowStepLength;
-                float lsample = map(lpos);
-                shadow += lsample;
-            }
-    
-            density = clamp((d / float(NUMBER_OF_STEPS)) * 20.0, 0.0, 1.0);
-            float s = exp((-shadow / float(shadow_steps)) * 3.);
-            sum.rgb += vec3(s * density) * vec3(1.1, 0.9, .5) * sum.a;
-            sum.a *= 1.-density;
+            distanceInVolume += marchSize;
+            float prevTransparency = transparency;
+            transparency *= BeerLambert(sigma_a * fbm3(pos), marchSize);
+            float absorptionFromMarch = prevTransparency - transparency;
+            for(int lightIndex = 0; lightIndex < LIGHTS.length(); lightIndex++)
+    		{
+                float lightVolumeDepth = 0.0f;
+                vec3 lightDirection = normalize((LIGHTS[lightIndex] - pos));
+                float lightDistance = length(lightDirection);
+                    
+                vec3 lightColor = LIGHT_COLOR * GetLightAttenuation(lightDistance); 
+                if(IsColorInsignificant(lightColor)) continue;
+                    
+                const float lightMarchSize = 0.65f * MARCH_MULTIPLIER;
 
-            sum.rgb += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * density * vec3(0.15, 0.45, 1.1) * sum.a;
+                const float ABSORPTION_CUTOFF = 0.25;
+                float t = 0.0;
+                float lightVisibility = 1.0;
+                float signedDistance = 0.0;
+                for(int i = 0; i < STEPS_SHADOW; i++)
+                {                       
+                    t += max(marchSize, signedDistance);
+                    if(t > lightDistance || lightVisibility < ABSORPTION_CUTOFF) break;
+
+                    vec3 position = ro + t * rd;
+
+                    signedDistance = fbm3(position);
+                    if(signedDistance < 0.0)
+                    {
+                        lightVisibility *= BeerLambert(sigma_a * GetFogDensity(position, signedDistance), marchSize);
+                    }
+                }
+                color += absorptionFromMarch * lightVisibility * volumeAlbedo * lightColor;
+            }
+            color += absorptionFromMarch * volumeAlbedo * 0.5;
         }
-        pos += rd * dist;
     }
     //return sum;
-    return BGC;
+    return color;
 }
 
 
@@ -137,7 +175,8 @@ float map(vec3 currPos) {
     float minv = distance_from_sphere(currPos,SPHERES[0], 1.0);
     for(int i = 1; i < SPHERES.length; i++) {
         float d = distance_from_sphere(currPos,SPHERES[i], 1.0);
-        minv = smooth_min(minv, d, 2.0) + fbm3(currPos);
+        ///minv = smooth_min(minv, d, 2.0) + fbm3(currPos);
+        minv = min(minv, d);
     }
     return minv;
 }
