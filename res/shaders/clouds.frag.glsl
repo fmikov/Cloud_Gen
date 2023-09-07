@@ -69,22 +69,6 @@ float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15)
     return ( t>=maxT ) ? -1.0 : t;
 }
 
-//TODO move to utils
-float GetFogDensity(vec3 position, float sdfDistance)
-{
-    const float maxSDFMultiplier = 1.0;
-    bool insideSDF = sdfDistance < 0.0;
-    float sdfMultiplier = insideSDF ? min(abs(sdfDistance), maxSDFMultiplier) : 0.0;
- 
-#if UNIFORM_FOG_DENSITY
-    return sdfMultiplier;
-#else
-   return sdfMultiplier * abs(fbm3(position / 6.0) + 0.5);
-#endif
-}
-
-
-
 
 #define MAX_STEPS 48
 #define SHADOW_STEPS 8
