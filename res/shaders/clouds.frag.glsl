@@ -86,88 +86,54 @@ float GetFogDensity(vec3 position, float sdfDistance)
 
 
 
-vec3 integrate(in vec3 ro, in vec3 rd)
+#define MAX_STEPS 48
+#define SHADOW_STEPS 8
+#define VOLUME_LENGTH 15.
+#define SHADOW_LENGTH 2.
+float jitter;
+
+vec4 integrate(in vec3 ro, in vec3 rd)
 {
-    float step_size = 0.2;
-    float step_size_light = 0.1;
-    float sigma_a = 3.9; //absorption
-    float sigma_s = 0.9; //scattering
-    float sigma_t = sigma_a + sigma_s; //extinction coeff
-    float phase_g = 0.8; //phase function g factor
+    float density = 0.;
 
-    Ray vr = Ray(ro, rd);
-    Sphere sphere = Sphere(SPHERES[0], 1., 0);
-    Hit view_sphere_hit;
+    float stepLength = VOLUME_LENGTH / float(MAX_STEPS);
+    float shadowStepLength = SHADOW_LENGTH / float(SHADOW_STEPS);
+    vec3 light = normalize(vec3(1.0, 2.0, 1.0));
 
-
-
-
-    float volumeDepth = intersect_volume(ro, rd);
-    if(volumeDepth < 0.) return BGC;
-
-
-    float density = 0.0;
-    float transparency = 1; // initialize transparency to 1
-
-    vec3 pos = ro + rd * volumeDepth;
-
-    const float MARCH_MULTIPLIER = 0.5;
-    vec3 color = vec3(0.0); //final color
-    const vec3 volumeAlbedo = vec3(0.8);
-    const float marchSize = 0.6 * MARCH_MULTIPLIER;
-    float distanceInVolume = 0.0;
-    float signedDistance = 0.0;
-
-    for (int n = 0; n < NUMBER_OF_STEPS; n++)
+    vec4 sum = vec4(0., 0., 0., 1.);
+    
+    vec3 pos = ro + rd* jitter * stepLength;
+    
+    for (int i = 0; i < MAX_STEPS; i++)
     {
-        
-        volumeDepth += max(signedDistance, 0.1);
-
-        float signedDistance = map(pos);
-        pos = ro + volumeDepth * rd;
-
-        float d = eval_density(pos, sphere.c, sphere.r);
-        if(signedDistance < 0.0)
-        {
-            distanceInVolume += marchSize;
-            float prevTransparency = transparency;
-            transparency *= BeerLambert(sigma_a * fbm3(pos), marchSize);
-            float absorptionFromMarch = prevTransparency - transparency;
-            for(int lightIndex = 0; lightIndex < LIGHTS.length(); lightIndex++)
-    		{
-                float lightVolumeDepth = 0.0f;
-                vec3 lightDirection = normalize((LIGHTS[lightIndex] - pos));
-                float lightDistance = length(lightDirection);
-                    
-                vec3 lightColor = LIGHT_COLOR * GetLightAttenuation(lightDistance); 
-                if(IsColorInsignificant(lightColor)) continue;
-                    
-                const float lightMarchSize = 0.65f * MARCH_MULTIPLIER;
-
-                const float ABSORPTION_CUTOFF = 0.25;
-                float t = 0.0;
-                float lightVisibility = 1.0;
-                float signedDistance = 0.0;
-                for(int i = 0; i < STEPS_SHADOW; i++)
-                {                       
-                    t += max(marchSize, signedDistance);
-                    if(t > lightDistance || lightVisibility < ABSORPTION_CUTOFF) break;
-
-                    vec3 position = ro + t * rd;
-
-                    signedDistance = fbm3(position);
-                    if(signedDistance < 0.0)
-                    {
-                        lightVisibility *= BeerLambert(sigma_a * GetFogDensity(position, signedDistance), marchSize);
-                    }
-                }
-                color += absorptionFromMarch * lightVisibility * volumeAlbedo * lightColor;
-            }
-            color += absorptionFromMarch * volumeAlbedo * 0.5;
+        if (sum.a < 0.1) {
+        	break;
         }
+        float d = map(pos);
+    
+        if( d > 0.001)
+        {
+            vec3 lpos = pos + light * jitter * shadowStepLength;
+            float shadow = 0.;
+    
+            for (int s = 0; s < SHADOW_STEPS; s++)
+            {
+                lpos += light * shadowStepLength;
+                float lsample = map(lpos);
+                shadow += lsample;
+            }
+    
+            density = clamp((d / float(MAX_STEPS)) * 20.0, 0.0, 1.0);
+            float s = exp((-shadow / float(SHADOW_STEPS)) * 3.);
+            sum.rgb += vec3(s * density) * vec3(1.1, 0.9, .5) * sum.a;
+            sum.a *= 1.-density;
+
+            sum.rgb += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * density * vec3(0.15, 0.45, 1.1) * sum.a;
+        }
+        pos += rd * stepLength;
     }
-    //return sum;
-    return color;
+
+    return sum;
 }
 
 
@@ -193,6 +159,7 @@ mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
 
 void main() 
 {
+    
 
     vec2 fragCoord = gl_FragCoord.xy;
 
@@ -207,15 +174,16 @@ void main()
     mat3 ca = setCamera( ro, ta, 0.0 );
 
     vec2 p = (2.0*fragCoord-u_Resolution.xy)/u_Resolution.y;
-
+    jitter = hash(p.x + p.y * 57.0 + u_Time);
     // focal length
     const float fl = 1.5;
         
     // ray direction
     vec3 rd = ca * normalize( vec3(p,fl) );
 
-    vec3 shaded_color = integrate(ro, rd);
-    color = vec4(shaded_color, 1.0);
+    //vec3 shaded_color = integrate(ro, rd);
+    //color = vec4(shaded_color, 1.0);
+    color = integrate(ro, rd);
 }
 
 
