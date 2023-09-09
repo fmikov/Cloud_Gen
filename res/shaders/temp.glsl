@@ -59,55 +59,6 @@ struct Hit {
 };
 
 
-
-bool intersect_sphere(in Ray ray, in Sphere sphere, inout float t0, inout float t1
-){
-	vec3 rc = sphere.c - ray.ro;
-	float radius2 = sphere.r * sphere.r;
-	float tca = dot(rc, ray.rd);
-	if (tca < 0.) return false;
-
-	float d2 = dot(rc, rc) - tca * tca;
-	if (d2 > radius2)
-		return false;
-
-	float thc = sqrt(radius2 - d2);
-	t0 = tca - thc;
-	t1 = tca + thc;
-
-	if (t0 > t1) 
-    {
-        float tmp = t0;
-        t0 = t1;
-        t1 = tmp;
-    }
-    return true;
-}
-
-bool intersect_sphere_inside(in Ray ray, in Sphere sphere, inout float t0, inout float t1
-){
-	vec3 rc = sphere.c - ray.ro;
-	float radius2 = sphere.r * sphere.r;
-	float tca = dot(rc, ray.rd);
-	//if (tca < 0.) return false;
-
-	float d2 = dot(rc, rc) - tca * tca;
-	//if (d2 > radius2)
-		//return false;
-
-	float thc = sqrt(radius2 - d2);
-	t0 = tca - thc;
-	t1 = tca + thc;
-
-	if (t0 > t1) 
-    {
-        float tmp = t0;
-        t0 = t1;
-        t1 = tmp;
-    }
-    return true;
-}
-
 bool intersect_sphere_test(
 	Ray ray,
 	Sphere sphere,
@@ -140,14 +91,6 @@ bool intersect_sphere_test(
 }
 
 
-vec3 applyFog( in vec3  rgb,       // original color of the pixel
-               in float distance ) // camera to point distance
-{
-    const float b = 0.1;
-    float fogAmount = 1.0 - exp( -distance*b );
-    vec3  fogColor  = vec3(0.5,0.6,0.7);
-    return mix( rgb, fogColor, fogAmount );
-}
 
 // the Henyey-Greenstein phase function
 float phase(float g, float cos_theta)
@@ -156,7 +99,6 @@ float phase(float g, float cos_theta)
     return 1 / (4 * PI) * (1 - g * g) / (denom * sqrt(denom));
 }
 
-vec3 blinn_phong(vec3 currPos, vec3 viewDir, vec3 normal);
 float map(vec3 currPos);
 
 float distance_from_sphere(in vec3 p, in vec3 c, float r)
@@ -168,20 +110,6 @@ float distanceFromPlane(in vec3 p){
     return p.y + 3;
 }
 
-//Estimate normal 
-const float EPS=0.001;
-vec3 estimateNormal(vec3 p){
-    float xPl=map(vec3(p.x+EPS,p.y,p.z));
-    float xMi=map(vec3(p.x-EPS,p.y,p.z));
-    float yPl=map(vec3(p.x,p.y+EPS,p.z));
-    float yMi=map(vec3(p.x,p.y-EPS,p.z));
-    float zPl=map(vec3(p.x,p.y,p.z+EPS));
-    float zMi=map(vec3(p.x,p.y,p.z-EPS));
-    float xDiff=xPl-xMi;
-    float yDiff=yPl-yMi;
-    float zDiff=zPl-zMi;
-    return normalize(vec3(xDiff,yDiff,zDiff));
-}
 
 vec3 integrate(in vec3 ro, in vec3 rd)
 {
@@ -263,44 +191,46 @@ vec3 integrate(in vec3 ro, in vec3 rd)
     return BGC * transparency + result;
 }
 
-vec3 ray_march_volume(in vec3 ro, in vec3 rd)
+
+float numFrames = XYFrames * XYFrames;
+float curdensity = 0;
+float transmittance = 1;
+float3 localcamvec = normalize( mul(Parameters.CameraVector, Primitive.WorldToLocal) ) * StepSize;
+
+float shadowstepsize = 1 / ShadowSteps;
+LightVector *= shadowstepsize;
+ShadowDensity *= shadowstepsize;
+
+Density *= StepSize;
+float3 lightenergy = 0;
+
+for (int i = 0; i < MaxSteps; i++)
 {
-    float total_distance_traveled = 0.0;
+    float cursample = PseudoVolumeTexture(Tex, TexSampler, saturate(CurPos), XYFrames, numFrames).r;
 
-    Ray vr = Ray(ro, rd);
-    Sphere sphere = Sphere(SPHERES[0], 1., 0);
- 
-    for (int i = 0; i < NUMBER_OF_STEPS; ++i)
+    //Sample Light Absorption and Scattering
+    if( cursample > 0.001)
     {
-        float t0, t1;
-        vec3 current_position = ro + total_distance_traveled * rd;
+        float3 lpos = CurPos;
+        float shadowdist = 0;
 
-        float distance_to_closest = map(current_position);
-
-        if (distance_to_closest < MINIMUM_HIT_DISTANCE) 
+        for (int s = 0; s < ShadowSteps; s++)
         {
-            //sets t1 and t1 to intersection points
-            bool hitSphere = intersect_sphere(vr, sphere, t0, t1);
-            if(!hitSphere) 
-            {
-                vec3 normal = estimateNormal(current_position);
-                vec3 bp = blinn_phong(current_position, -rd, normal);
-                vec3 updated = applyFog(bp, total_distance_traveled);
-                return updated;
-            }
-            //return vec3(t1/10., 0., 0.);
-            //return integrate(ro, rd);
+            lpos += LightVector;
+            float lsample = PseudoVolumeTexture(Tex, TexSampler, saturate(lpos), XYFrames, numFrames).r;
+            shadowdist += lsample;
         }
 
-
-        if (total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
-        {
-            break;
-        }
-        total_distance_traveled += distance_to_closest;
+        curdensity = saturate(cursample * Density);
+        float shadowterm = exp(-shadowdist * ShadowDensity);
+        float3 absorbedlight = shadowterm * curdensity;
+        lightenergy += absorbedlight * transmittance;
+        transmittance *= 1-curdensity;
     }
-    return BGC;
+    CurPos -= localcamvec;
 }
+
+return float4( lightenergy, transmittance);
 
 
 float map(vec3 currPos) {
@@ -311,7 +241,6 @@ float map(vec3 currPos) {
             minv = d;
         }
     }
-    //minv = min(minv, distanceFromPlane(currPos));
     return minv;
 }
 
@@ -348,14 +277,7 @@ void main()
     // ray direction
     vec3 rd = ca * normalize( vec3(p,fl) );
 
-    // ray differentials, not used atm
-    //vec2 px = (2.0*(fragCoord+vec2(1.0,0.0))-u_Resolution.xy)/u_Resolution.y;
-    //vec2 py = (2.0*(fragCoord+vec2(0.0,1.0))-u_Resolution.xy)/u_Resolution.y;
-    //vec3 rdx = ca * normalize( vec3(px,fl) );
-    //vec3 rdy = ca * normalize( vec3(py,fl) );
-
     vec3 shaded_color = integrate(ro, rd);
     color = vec4(shaded_color, 1.0);
 }
-
 

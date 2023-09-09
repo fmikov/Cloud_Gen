@@ -26,7 +26,7 @@ const float MAXIMUM_TRACE_DISTANCE = 10000.0;
 
 const vec3 LIGHT_POS = vec3(2.0, 3.0, 0.0);
 const vec3 SPHERES[3] = vec3[](vec3(2.0, -1.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, -1.0, 2.0));
-const vec3 LIGHT_COLOR = vec3(20, 20, 20);
+const vec3 LIGHT_COLOR = vec3(1., 1., 1.);
 const vec3 LIGHT_DIR = normalize(vec3(0.0, -1.0, 0.5));
 const float LIGHT_INTENSITY = 20;
 const vec3 BGC = vec3(0.572, 0.772, 0.921);
@@ -107,13 +107,15 @@ float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15)
 }
 
 
+//https://shaderbits.com/blog/creating-volumetric-ray-marcher
 
 vec4 integrate(in vec3 ro, in vec3 rd)
 {
     float step_size = 0.2;
+    int max_steps = NUMBER_OF_STEPS;
     float step_size_shadow = 0.1;
     int shadow_steps = 8;
-    float sigma_a = 3.9; //absorption
+    float sigma_a = 1.9; //absorption
     float sigma_s = 0.9; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
     float phase_g = 0.8; //phase function g factor
@@ -122,55 +124,59 @@ vec4 integrate(in vec3 ro, in vec3 rd)
     Sphere sphere = Sphere(SPHERES[0], 1., 0);
     Hit view_sphere_hit;
 
-    float transparency = 1; // initialize transparency to 1
+    float curDensity = 0;
+    float transmittance = 1.;
 
-
+    //uniform density
+    float density = 1.0 * step_size;
 
     float volumeDepth = intersect_volume(ro, rd);
-    //if(volumeDepth < 0.) return BGC;
 
-
-    float density = 0.0;
-
-    vec3 pos = ro + rd * volumeDepth;
     vec3 color = vec3(0.0);
     float distanceInVolume = 0.0f;
     float signedDistance = 0.0;
 
-    vec4 sum = vec4(0.0, 0.0, 0.0, 1.0);
+    vec3 pos = ro + rd * volumeDepth;
 
-    for (int n = 0; n < NUMBER_OF_STEPS; n++)
+    for (int n = 0; n < max_steps; n++)
     {
-        
+        float curSample = map(pos);
         volumeDepth += signedDistance;
 
-        float d = map(pos);
-        if(d > 0.01)
+        if (transmittance < 0.1) {
+        	break;
+        }
+
+        //sample light absorption and scattering
+        if(curSample > 0.01)
         {
+            //jitter start position of shadow calcs
             vec3 lpos = pos - LIGHT_DIR * jitter * step_size_shadow;
             float shadow = 0.;
     
+            //march towards light
             for (int s = 0; s < shadow_steps; s++)
             {
                 lpos += -LIGHT_DIR * step_size_shadow;
                 float lsample = map(lpos);
                 shadow += lsample;
             }
-    
-            density = clamp((d / float(NUMBER_OF_STEPS)) * 20.0, 0.0, 1.0);
-            float s = exp((-shadow / float(shadow_steps)) * 3.);
-            sum.rgb += vec3(s * density) * vec3(1.1, 0.9, .5) * sum.a;
-            sum.a *= 1.-density;
+            //curDensity = clamp((curSample * density = 1/max_steps) * 20 , 0.0, 1.0);
+            curDensity = clamp((curSample * density), 0.0, 1.0);
+            float light_attenuation = exp(-shadow / shadow_steps * sigma_t);
+            color += LIGHT_COLOR * light_attenuation * curDensity * transmittance;
+            transmittance *= 1.-curDensity;
 
-            sum.rgb += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * density * vec3(0.15, 0.45, 1.1) * sum.a;
+            color += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * curDensity * vec3(0.15, 0.45, 1.1) * transmittance;
         }
         pos += rd * step_size;
     }
     //return sum;
-    return sum;
+    return vec4(color, transmittance);
 }
 
-
+//we don't need high precision for deciding when we hit the volume
+//if we do 1-d, we can use this function as a density function as well?
 float map(vec3 currPos) {
     float minv = distance_from_sphere(currPos,SPHERES[0], 1.0);
     return 1-minv;
