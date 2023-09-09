@@ -1,7 +1,7 @@
 #version 330 core
 
 #include "shader_includes/utils.glsl"
-#include "shader_includes/noise.glsl"
+//#include "shader_includes/noise.glsl"
 
 layout(location = 0) out vec4 color;
 
@@ -15,7 +15,7 @@ uniform vec3 u_CameraUp;
 uniform mat4 u_MVP;
 uniform mat4 u_MVP_inverse;
 uniform vec2 u_Mouse;
-//uniform float u_Time;
+uniform float u_Time;
 
 
 in vec2 v_TexCoord;
@@ -32,7 +32,46 @@ const float LIGHT_INTENSITY = 20;
 const vec3 BGC = vec3(0.572, 0.772, 0.921);
 
 #define PI 3.14159265358979323846
+float jitter;
 
+
+
+// noise
+// Volume raycasting by XT95
+// https://www.shadertoy.com/view/lss3zr
+mat3 m = mat3( 0.00,  0.80,  0.60,
+              -0.80,  0.36, -0.48,
+              -0.60, -0.48,  0.64 );
+float hash( float n )
+{
+    return fract(sin(n)*43758.5453);
+}
+
+float noise( in vec3 x )
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+
+    f = f*f*(3.0-2.0*f);
+
+    float n = p.x + p.y*57.0 + 113.0*p.z;
+
+    float res = mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
+                    mix(mix( hash(n+113.0), hash(n+114.0),f.x),
+                        mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
+    return res;
+}
+
+float fbm( vec3 p )
+{
+    float f;
+    f  = 0.5000*noise( p ); p = m*p*2.02;
+    f += 0.2500*noise( p ); p = m*p*2.03;
+    f += 0.12500*noise( p ); p = m*p*2.01;
+    f += 0.06250*noise( p );
+    return f;
+}
 
 
 // the Henyey-Greenstein phase function
@@ -69,10 +108,11 @@ float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15)
 
 
 
-vec3 integrate(in vec3 ro, in vec3 rd)
+vec4 integrate(in vec3 ro, in vec3 rd)
 {
     float step_size = 0.2;
-    float step_size_light = 0.1;
+    float step_size_shadow = 0.1;
+    int shadow_steps = 8;
     float sigma_a = 3.9; //absorption
     float sigma_s = 0.9; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
@@ -87,7 +127,7 @@ vec3 integrate(in vec3 ro, in vec3 rd)
 
 
     float volumeDepth = intersect_volume(ro, rd);
-    if(volumeDepth < 0.) return BGC;
+    //if(volumeDepth < 0.) return BGC;
 
 
     float density = 0.0;
@@ -97,24 +137,22 @@ vec3 integrate(in vec3 ro, in vec3 rd)
     float distanceInVolume = 0.0f;
     float signedDistance = 0.0;
 
+    vec4 sum = vec4(0.0, 0.0, 0.0, 1.0);
+
     for (int n = 0; n < NUMBER_OF_STEPS; n++)
     {
         
         volumeDepth += signedDistance;
 
-        float dist = map(pos);
-
-        if(dist < MINIMUM_HIT_DISTANCE) return vec3(1.0);
-
-        float d = eval_density(pos, sphere.c, sphere.r);
-        if(false && d < 0.1)
+        float d = map(pos);
+        if(d > 0.01)
         {
-            vec3 lpos = pos - LIGHT_DIR * hash(u_Time) * shadowStepLength;
+            vec3 lpos = pos - LIGHT_DIR * jitter * step_size_shadow;
             float shadow = 0.;
     
             for (int s = 0; s < shadow_steps; s++)
             {
-                lpos += -LIGHT_DIR * shadowStepLength;
+                lpos += -LIGHT_DIR * step_size_shadow;
                 float lsample = map(lpos);
                 shadow += lsample;
             }
@@ -126,18 +164,19 @@ vec3 integrate(in vec3 ro, in vec3 rd)
 
             sum.rgb += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * density * vec3(0.15, 0.45, 1.1) * sum.a;
         }
-        pos += rd * dist;
+        pos += rd * step_size;
     }
     //return sum;
-    return BGC;
+    return sum;
 }
 
 
 float map(vec3 currPos) {
     float minv = distance_from_sphere(currPos,SPHERES[0], 1.0);
+    return 1-minv;
     for(int i = 1; i < SPHERES.length; i++) {
         float d = distance_from_sphere(currPos,SPHERES[i], 1.0);
-        minv = smooth_min(minv, d, 2.0) + fbm3(currPos);
+        //minv = smooth_min(minv, d, 2.0) + fbm3(currPos);
     }
     return minv;
 }
@@ -158,7 +197,6 @@ void main()
     vec2 fragCoord = gl_FragCoord.xy;
 
     vec2 mouse = u_Mouse/u_Resolution;
-    float u_Time = 0;
 
     // camera	
     float cam_dist = 6.5;
@@ -169,14 +207,18 @@ void main()
 
     vec2 p = (2.0*fragCoord-u_Resolution.xy)/u_Resolution.y;
 
+    //jitter, p.x multiplied so every pixel is sufficiently different? otherwise we see weird jitter lines
+    jitter = hash(p.x * 51 + p.y + u_Time);
+
     // focal length
     const float fl = 1.5;
         
     // ray direction
     vec3 rd = ca * normalize( vec3(p,fl) );
 
-    vec3 shaded_color = integrate(ro, rd);
-    color = vec4(shaded_color, 1.0);
+    vec4 shaded_color = integrate(ro, rd);
+    color = shaded_color;
+    //color = vec4(shaded_color, 1.0);
 }
 
 
