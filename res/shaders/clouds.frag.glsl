@@ -15,6 +15,7 @@ uniform vec3 u_CameraUp;
 uniform mat4 u_MVP;
 uniform mat4 u_MVP_inverse;
 uniform vec2 u_Mouse;
+uniform vec2 u_Mouse_Offset;
 uniform float u_Time;
 
 
@@ -25,7 +26,6 @@ const float MINIMUM_HIT_DISTANCE = 0.001;
 const float MAXIMUM_TRACE_DISTANCE = 10000.0;
 
 const vec3 LIGHT_POS = vec3(2.0, 3.0, 0.0);
-const vec3 SPHERES[3] = vec3[](vec3(2.0, -1.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, -1.0, 2.0));
 const vec3 LIGHT_COLOR = vec3(1., 1., 1.);
 const vec3 LIGHT_DIR = normalize(vec3(0.0, -1.0, 0.5));
 const float LIGHT_INTENSITY = 20;
@@ -78,8 +78,9 @@ float fbm( vec3 p )
 float stepUp(float t, float duration, float transition_duration)
 {
   float cur_time = mod(t += transition_duration, duration);
-  float stp = floor(t / duration) - 1.0;
-  return smoothstep(0.0, transition_duration, cur_time) + stp;
+  //total cycle number
+  float cycle = floor(t / duration) - 1.0;
+  return smoothstep(0.0, transition_duration, cur_time) + cycle;
 }
 
 
@@ -124,7 +125,7 @@ float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15)
 
 //https://shaderbits.com/blog/creating-volumetric-ray-marcher
 
-vec3 integrate(in vec3 ro, in vec3 rd)
+vec4 raymarch(in vec3 ro, in vec3 rd)
 {
     float step_size = 0.2;
     int max_steps = NUMBER_OF_STEPS;
@@ -138,7 +139,6 @@ vec3 integrate(in vec3 ro, in vec3 rd)
     float curDensity = 0;
     float transmittance = 1.;
 
-    //uniform density
     float density = 1.0 * step_size;
 
     float volumeDepth = intersect_volume(ro, rd);
@@ -185,20 +185,32 @@ vec3 integrate(in vec3 ro, in vec3 rd)
         }
         pos += rd * step_size;
     }
-    return LIGHT_COLOR * color + BGC*transmittance;
+    //handle background in main function
+    return vec4(LIGHT_COLOR*color, transmittance);
+    //return LIGHT_COLOR * color + BGC*transmittance;
 }
 
 //we don't need high precision for deciding when we hit the volume
 //if we do 1-d, we can use this function as a density function as well?
+//return [0, 1], > 0 only if close enough
 float map(vec3 currPos) {
     float distortion = fbm(currPos);
-    float minv = sdSphere(currPos,SPHERES[0], 1.0) + distortion;
-    return 1-minv;
-    for(int i = 1; i < SPHERES.length; i++) {
-        float d = sdSphere(currPos,SPHERES[i], 1.0);
-        //minv = smooth_min(minv, d, 2.0) + fbm3(currPos);
-    }
-    return minv;
+
+    float s1 = 1 - sdSphere(currPos,vec3(2.0, -1.0, 0.0), 1.0) + distortion;
+    float s2 = 1 - sdSphere(currPos,vec3(0.0, -1.0, 2.0), 1.0) + distortion;
+    float s3 = 1 - sdSphere(currPos,vec3(2.0, -1.0, 2.0), 1.0) + distortion;
+    float torus = 1 - sdTorus(currPos * 2.0, vec2(6.0, 0.005)) + distortion;
+
+    float t = mod(stepUp(u_Time, 4.0, 1.0), 4.0);
+    
+	float d = mix(s1, s2, clamp(t, 0.0, 1.0));
+    d = mix(d, torus, clamp(t - 1.0, 0.0, 1.0));
+    d = mix(d, s3, clamp(t - 2.0, 0.0, 1.0));
+    d = mix(d, s1, clamp(t - 3.0, 0.0, 1.0));
+
+    float falloff = smoothstep(0.8, 1., d);
+    
+	return min(max(0.0, d), 1.0);
 }
 
 mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
@@ -216,12 +228,17 @@ void main()
 
     vec2 fragCoord = gl_FragCoord.xy;
 
-    vec2 mouse = u_Mouse/u_Resolution;
+    vec2 mouse = u_Mouse_Offset * 0.01;
+
+    if (mouse.y > 89.0f)
+        mouse.y = 89.0f;
+    if (mouse.y < -89.0f)
+        mouse.y = -89.0f;
 
     // camera	
     float cam_dist = 6.5;
     vec3 ta = vec3( 0.25, -0.75, -0.75 );
-    vec3 ro = ta + vec3( cam_dist*cos(0.1*u_Time + 7.0*mouse.x), sin(mouse.y*(3.14/45)) + 3.2, cam_dist*sin(0.1*u_Time + 7.0*mouse.x) );
+    vec3 ro = ta + vec3( cam_dist*cos(0.1*u_Time + 7.0*mouse.x) * cos(mouse.y * 7), sin(mouse.y * 7) * 3.2, cam_dist*sin(0.1*u_Time + 7.0*mouse.x) * cos(mouse.y * 7));
     // camera-to-world transformation
     mat3 ca = setCamera( ro, ta, 0.0 );
 
@@ -236,10 +253,17 @@ void main()
     // ray direction
     vec3 rd = ca * normalize( vec3(p,fl) );
 
-    vec3 shaded_color = integrate(ro, rd);
+    vec4 shaded_color = raymarch(ro, rd);
+
+    vec3 col = shaded_color.rgb + (BGC - rd.y*0.4) * shaded_color.a;
+
+    float sun = clamp( dot(LIGHT_DIR,rd), 0.0, 1.0 );
+    col += 0.2*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
+    
+
     //gamma correction
-    shaded_color = pow(shaded_color, vec3(1.0/2.2));
-    color = vec4(shaded_color, 1.0);
+    col = pow(col, vec3(1.0/2.2));
+    color = vec4(col, 1.0);
 }
 
 

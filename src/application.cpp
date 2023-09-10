@@ -27,8 +27,8 @@
 #include "gtc/matrix_inverse.hpp"
 
 
-
-double xc, yc;
+//current, previous, offset for mouse
+double xc, yc, xp, yp, xo, yo;
 void MouseDragCallback(GLFWwindow* window, double xpos, double ypos);
 
 
@@ -185,6 +185,7 @@ int main(void)
 		shader_march.SetUniform1f("u_Time", currFrame);
 
 
+		shader_march.SetUniform2f("u_Mouse_Offset", xo, yo);
 		shader_march.SetUniform2f("u_Mouse", xc, yc);
 
 		renderer.Draw(va, ib, shader_march);
@@ -243,7 +244,7 @@ int main(void)
 	return 0;
 }
 
-
+bool firstMouse = true;
 void MouseDragCallback(GLFWwindow* window, double xpos, double ypos) {
 	bool lButtonDown = false;
 	int mouseAction = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
@@ -252,11 +253,23 @@ void MouseDragCallback(GLFWwindow* window, double xpos, double ypos) {
 	}
 	if (mouseAction == GLFW_RELEASE) {
 		lButtonDown = false;
+		xp = xc;
+		yp = yc;
+	}
+	if (firstMouse)
+	{
+		xp = xpos;
+		yp = ypos;
+		firstMouse = false;
 	}
 
 	if (lButtonDown)
 	{
 		xc = xpos;
 		yc = ypos;
+		xo += xc - xp;
+		yo += yc - yp;
+		xp = xc;
+		yp = yc;
 	}
 }
