@@ -229,14 +229,16 @@ void main()
 
     vec2 fragCoord = gl_FragCoord.xy;
 
-    vec2 mouse = u_PitchYaw;
+    //in radians
+    float pitch = u_PitchYaw.x;
+    float yaw = u_PitchYaw.y;
 
     
 
     // camera	
     float cam_dist = 6.5;
     vec3 ta = vec3( 0.0, -0.75, 0.0 );
-    vec3 ro = ta + vec3( cam_dist*cos(0.1*u_Time + mouse.x) * cos(mouse.y), sin(mouse.y) * cam_dist, cam_dist*sin(0.1*u_Time + mouse.x) * cos(mouse.y));
+    vec3 ro = ta + vec3( cam_dist*cos(yaw) * cos(pitch), sin(pitch) * cam_dist, cam_dist*sin(yaw) * cos(pitch));
     // camera-to-world transformation
     mat3 ca = setCamera( ro, ta, 0.0 );
 

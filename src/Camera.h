@@ -22,7 +22,7 @@ private:
 	float m_Yaw =  - 90.0f;
 	// camera options
 	float m_MovementSpeed = 5.f;
-	float m_MouseSensitivity = 0.1f;
+	float m_MouseSensitivity = 0.3f;
 
 private:
 	float m_FOV;

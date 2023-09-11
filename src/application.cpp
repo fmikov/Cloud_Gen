@@ -175,7 +175,7 @@ int main(void)
 		shader_march.SetUniformVec3f("u_CameraUp", camera.m_camera_up());
 		shader_march.SetUniform1f("u_Time", currFrame);
 
-		shader_march.SetUniform2f("u_PitchYaw", camera.m_pitch(), camera.m_yaw());
+		shader_march.SetUniform2f("u_PitchYaw", radians(camera.m_pitch()), radians(camera.m_yaw()));
 
 		renderer.Draw(va, ib, shader_march);
 
