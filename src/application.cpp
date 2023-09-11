@@ -27,11 +27,6 @@
 #include "gtc/matrix_inverse.hpp"
 
 
-//current, previous, offset for mouse
-double xc, yc, xp, yp, xo, yo;
-void MouseDragCallback(GLFWwindow* window, double xpos, double ypos);
-
-
 int main(void)
 {
 	GLFWwindow* window;
@@ -110,10 +105,6 @@ int main(void)
 	shader_march.Bind();
 	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
 	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
-	// shader_march.SetUniformVec3f("u_CameraFront", camera.m_camera_front());
-	// shader_march.SetUniformVec3f("u_CameraPos", camera.m_camera_pos());
-	// shader_march.SetUniformVec3f("u_CameraRight", camera.m_camera_right());
-	// shader_march.SetUniformMat4f("u_MVP", mvp);
 
 
 
@@ -147,9 +138,9 @@ int main(void)
 
 
 	//input
-	glfwSetCursorPosCallback(window, MouseDragCallback);
-	//glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
-	//glfwSetKeyCallback(window, CameraInputHandler::KeyboardMovementCallback);
+	glfwSetCursorPosCallback(window, CameraInputHandler::MousePositionCallback);
+	glfwSetScrollCallback(window, CameraInputHandler::MouseScrollCallback);
+	glfwSetKeyCallback(window, CameraInputHandler::KeyboardMovementCallback);
 
 
 	/* Loop until the user closes the window */
@@ -184,16 +175,13 @@ int main(void)
 		shader_march.SetUniformVec3f("u_CameraUp", camera.m_camera_up());
 		shader_march.SetUniform1f("u_Time", currFrame);
 
-
-		shader_march.SetUniform2f("u_Mouse_Offset", xo, yo);
-		shader_march.SetUniform2f("u_Mouse", xc, yc);
+		shader_march.SetUniform2f("u_PitchYaw", camera.m_pitch(), camera.m_yaw());
 
 		renderer.Draw(va, ib, shader_march);
 
 
 		
 
-		//std::cout << xc << " " << yc << std::endl;
 		
 
 		if (show_demo_window)
@@ -242,34 +230,4 @@ int main(void)
 
 	glfwTerminate();
 	return 0;
-}
-
-bool firstMouse = true;
-void MouseDragCallback(GLFWwindow* window, double xpos, double ypos) {
-	bool lButtonDown = false;
-	int mouseAction = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-	if (mouseAction == GLFW_PRESS) {
-		lButtonDown = true;
-	}
-	if (mouseAction == GLFW_RELEASE) {
-		lButtonDown = false;
-		xp = xc;
-		yp = yc;
-	}
-	if (firstMouse)
-	{
-		xp = xpos;
-		yp = ypos;
-		firstMouse = false;
-	}
-
-	if (lButtonDown)
-	{
-		xc = xpos;
-		yc = ypos;
-		xo += xc - xp;
-		yo += yc - yp;
-		xp = xc;
-		yp = yc;
-	}
 }

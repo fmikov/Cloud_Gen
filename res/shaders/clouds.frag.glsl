@@ -15,7 +15,7 @@ uniform vec3 u_CameraUp;
 uniform mat4 u_MVP;
 uniform mat4 u_MVP_inverse;
 uniform vec2 u_Mouse;
-uniform vec2 u_Mouse_Offset;
+uniform vec2 u_PitchYaw;
 uniform float u_Time;
 
 
@@ -213,6 +213,7 @@ float map(vec3 currPos) {
 	return min(max(0.0, d), 1.0);
 }
 
+//lookat matrix
 mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
 {
 	vec3 cw = normalize(ta-ro);
@@ -228,17 +229,14 @@ void main()
 
     vec2 fragCoord = gl_FragCoord.xy;
 
-    vec2 mouse = u_Mouse_Offset * 0.01;
+    vec2 mouse = u_PitchYaw;
 
-    if (mouse.y > 89.0f)
-        mouse.y = 89.0f;
-    if (mouse.y < -89.0f)
-        mouse.y = -89.0f;
+    
 
     // camera	
     float cam_dist = 6.5;
-    vec3 ta = vec3( 0.25, -0.75, -0.75 );
-    vec3 ro = ta + vec3( cam_dist*cos(0.1*u_Time + 7.0*mouse.x) * cos(mouse.y * 7), sin(mouse.y * 7) * 3.2, cam_dist*sin(0.1*u_Time + 7.0*mouse.x) * cos(mouse.y * 7));
+    vec3 ta = vec3( 0.0, -0.75, 0.0 );
+    vec3 ro = ta + vec3( cam_dist*cos(0.1*u_Time + mouse.x) * cos(mouse.y), sin(mouse.y) * cam_dist, cam_dist*sin(0.1*u_Time + mouse.x) * cos(mouse.y));
     // camera-to-world transformation
     mat3 ca = setCamera( ro, ta, 0.0 );
 

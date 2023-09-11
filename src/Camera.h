@@ -61,6 +61,16 @@ public:
 	{
 		return m_CameraRight;
 	}
+
+	[[nodiscard]] float m_pitch() const
+	{
+		return m_Pitch;
+	}
+
+	[[nodiscard]] float m_yaw() const
+	{
+		return m_Yaw;
+	}
 };
 
 void processInput(GLFWwindow* window);
