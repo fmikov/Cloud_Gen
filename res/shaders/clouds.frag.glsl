@@ -23,20 +23,19 @@ in vec2 v_TexCoord;
 
 const int NUMBER_OF_STEPS = 64;
 const float MINIMUM_HIT_DISTANCE = 0.001;
-const float MAXIMUM_TRACE_DISTANCE = 10000.0;
+const float MAXIMUM_TRACE_DISTANCE = 1000.0;
 
-const vec3 LIGHT_POS = vec3(2.0, 3.0, 0.0);
 const vec3 LIGHT_COLOR = vec3(1., 1., 1.);
-const vec3 LIGHT_DIR = normalize(vec3(0.0, -1.0, 0.5));
-const float LIGHT_INTENSITY = 20;
+const vec3 LIGHT_DIR = normalize(vec3(-1.0, 1.0, -1.0));
 const vec3 BGC = vec3(0.572, 0.772, 0.921)*0.7;
 
 #define PI 3.14159265358979323846
 float jitter;
+float map(vec3 currPos);
 
 
 
-// noise
+// noise TODO move to noise file
 // Volume raycasting by XT95
 // https://www.shadertoy.com/view/lss3zr
 mat3 m = mat3( 0.00,  0.80,  0.60,
@@ -83,16 +82,6 @@ float stepUp(float t, float duration, float transition_duration)
   return smoothstep(0.0, transition_duration, cur_time) + cycle;
 }
 
-
-// the Henyey-Greenstein phase function
-float phase(float g, vec3 view_dir, vec3 light_dir)
-{
-    float cos_theta = dot(view_dir, light_dir);
-    return 1 / (4 * PI) * (1 - g * g) / pow(1 + g * g - 2 * g * cos_theta, 1.5);
-}
-
-float map(vec3 currPos);
-
 float sdSphere(in vec3 p, in vec3 c, float r)
 {
     return length(p - c) - r;
@@ -104,7 +93,7 @@ float sdTorus( vec3 p, vec2 t )
   return length(q)-t.y;
 }
 
-float distanceFromPlane(in vec3 p){
+float sdPlane(in vec3 p){
     return p.y + 3;
 }
 
@@ -131,8 +120,8 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
     int max_steps = NUMBER_OF_STEPS;
     float step_size_shadow = 0.1;
     int shadow_steps = 8;
-    float sigma_a = 1.9; //absorption
-    float sigma_s = 0.9; //scattering
+    float sigma_a = 2.9; //absorption
+    float sigma_s = 1.4; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
     float phase_g = 0.8; //phase function g factor
 
@@ -157,7 +146,8 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
         if (transmittance < 0.1) {
         	break;
         }
-
+        //temp
+        vec3 ext_col = vec3(1.0, 0.0, 0.0);
         //sample light absorption and scattering
         if(curSample > 0.01)
         {
@@ -173,34 +163,38 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
                 shadow += lsample;
             }
             //curDensity = clamp((curSample * density = 1/max_steps) * 20 , 0.0, 1.0);
-            curDensity = clamp((curSample), 0.0, 1.0) * density;
-            float light_attenuation = exp(-shadow / shadow_steps * sigma_t);
-            color += light_attenuation * curDensity * transmittance * sigma_s;
+            curDensity = clamp((curSample / max_steps) * 30, 0.0, 1.0) * density;
+            float light_attenuation = exp(-shadow / shadow_steps * sigma_t) * curDensity;
+
+            //TODO add ambiat and AO
+            color += light_attenuation * transmittance * sigma_s;
 
             transmittance *= 1.-curDensity;
             //float sample_transparency = exp(- curSample * density * sigma_t);
             //transmittance *= sample_transparency;
 
-            color += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * curDensity * vec3(0.15, 0.45, 1.1) * transmittance;
+            //this part shouldnt be here, replace
+            //color += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * curDensity * vec3(0.15, 0.45, 1.1) * transmittance;
         }
         pos += rd * step_size;
     }
     //handle background in main function
-    return vec4(LIGHT_COLOR*color, transmittance);
+    return vec4(color, transmittance);
     //return LIGHT_COLOR * color + BGC*transmittance;
 }
+
 
 //we don't need high precision for deciding when we hit the volume
 //if we do 1-d, we can use this function as a density function as well?
 //return [0, 1], > 0 only if close enough
-float map(vec3 currPos) {
-    float distortion = fbm(currPos);
-
+float map(in vec3 currPos) {
+    float distortion = fbm(currPos + u_Time);
     float s1 = 1 - sdSphere(currPos,vec3(2.0, -1.0, 0.0), 1.0) + distortion;
     float s2 = 1 - sdSphere(currPos,vec3(0.0, -1.0, 2.0), 1.0) + distortion;
     float s3 = 1 - sdSphere(currPos,vec3(2.0, -1.0, 2.0), 1.0) + distortion;
     float torus = 1 - sdTorus(currPos * 2.0, vec2(6.0, 0.005)) + distortion;
-
+    
+    //used to choose which shape to render and also transition smoothly
     float t = mod(stepUp(u_Time, 4.0, 1.0), 4.0);
     
 	float d = mix(s1, s2, clamp(t, 0.0, 1.0));
@@ -208,8 +202,6 @@ float map(vec3 currPos) {
     d = mix(d, s3, clamp(t - 2.0, 0.0, 1.0));
     d = mix(d, s1, clamp(t - 3.0, 0.0, 1.0));
 
-    float falloff = smoothstep(0.8, 1., d);
-    
 	return min(max(0.0, d), 1.0);
 }
 
@@ -257,8 +249,8 @@ void main()
 
     vec3 col = shaded_color.rgb + (BGC - rd.y*0.4) * shaded_color.a;
 
-    float sun = clamp( dot(LIGHT_DIR,rd), 0.0, 1.0 );
-    col += 0.2*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
+    float sun = clamp( dot(-LIGHT_DIR,rd), 0.0, 1.0 );
+    col += 0.4*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
     
 
     //gamma correction
