@@ -120,7 +120,7 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
     int max_steps = NUMBER_OF_STEPS;
     float step_size_shadow = 0.1;
     int shadow_steps = 8;
-    float sigma_a = 2.9; //absorption
+    float sigma_a = 2.0; //absorption
     float sigma_s = 1.4; //scattering
     float sigma_t = sigma_a + sigma_s; //extinction coeff
     float phase_g = 0.8; //phase function g factor
