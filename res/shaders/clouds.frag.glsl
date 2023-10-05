@@ -93,8 +93,8 @@ float sdTorus( vec3 p, vec2 t )
   return length(q)-t.y;
 }
 
-float sdPlane(in vec3 p){
-    return p.y + 3;
+float sdPlane(in vec3 p, in float h){
+    return p.y + h;
 }
 
 
@@ -174,7 +174,7 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
             //transmittance *= sample_transparency;
 
             //this part shouldnt be here, replace
-            //color += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * curDensity * vec3(0.15, 0.45, 1.1) * transmittance;
+            color += exp(-map(pos + vec3(0,0.25,0.0)) * .2) * curDensity * vec3(0.15, 0.45, 1.1) * transmittance;
         }
         pos += rd * step_size;
     }
@@ -188,21 +188,9 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
 //if we do 1-d, we can use this function as a density function as well?
 //return [0, 1], > 0 only if close enough
 float map(in vec3 currPos) {
-    float distortion = fbm(currPos + u_Time);
-    float s1 = 1 - sdSphere(currPos,vec3(2.0, -1.0, 0.0), 1.0) + distortion;
-    float s2 = 1 - sdSphere(currPos,vec3(0.0, -1.0, 2.0), 1.0) + distortion;
-    float s3 = 1 - sdSphere(currPos,vec3(2.0, -1.0, 2.0), 1.0) + distortion;
-    float torus = 1 - sdTorus(currPos * 2.0, vec2(6.0, 0.005)) + distortion;
-    
-    //used to choose which shape to render and also transition smoothly
-    float t = mod(stepUp(u_Time, 4.0, 1.0), 4.0);
-    
-	float d = mix(s1, s2, clamp(t, 0.0, 1.0));
-    d = mix(d, torus, clamp(t - 1.0, 0.0, 1.0));
-    d = mix(d, s3, clamp(t - 2.0, 0.0, 1.0));
-    d = mix(d, s1, clamp(t - 3.0, 0.0, 1.0));
+    float p1 = sdPlane(currPos, -5);
 
-	return min(max(0.0, d), 1.0);
+	return p1;
 }
 
 //lookat matrix
@@ -213,6 +201,49 @@ mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
 	vec3 cu = normalize( cross(cw,cp) );
 	vec3 cv =          ( cross(cu,cw) );
     return mat3( cu, cv, cw );
+}
+
+
+const float density = 0.5;
+const float zenithOffset = 0.48;
+const vec3 skyColor = vec3(0.37, 0.55, 1.0) * (1.0 + 0.0);
+const float fov = 1;
+
+#define zenithDensity(x) density / pow(max(x - zenithOffset, 0.0035), 0.75)
+
+float getSunPoint(vec2 p, vec2 lp){
+    return smoothstep(0.04*(fov/2.0), 0.026*(fov/2.0), distance(p, lp)) * 50.0;
+}
+
+float getMie(vec2 p, vec2 lp){
+    float mytest = lp.y < 0.5 ? (lp.y+0.5)*pow(0.05,20.0):0.05;
+    float disk = clamp(1.0 - pow(distance(p, lp), mytest), 0.0, 1.0);
+    return disk*disk*(3.0 - 2.0 * disk) * 0.25 * PI;
+}
+
+vec3 getSkyAbsorption(vec3 x, float y){
+    vec3 absorption = x * y;
+    absorption = pow(absorption, 1.0 - (y + absorption) * 0.5) / x / y;
+    return absorption;
+}
+
+vec3 jodieReinhardTonemap(vec3 c){
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    vec3 tc = c / (c + 1.0);
+    return mix(c / (l + 1.0), tc, tc);
+}
+
+vec3 getAtmosphericScattering(vec2 p, vec2 lp){
+    float zenithnew = zenithDensity(p.y);
+    float sunPointDistMult =  clamp(length(max(lp.y + 0.1 - zenithOffset, 0.0)), 0.0, 1.0);
+    vec3 absorption = getSkyAbsorption(skyColor, zenithnew);
+    vec3 sunAbsorption = getSkyAbsorption(skyColor, zenithDensity(lp.y + 0.1));
+    vec3 sun3 = getSunPoint(p, lp) * absorption;
+    vec3 mie2 = getMie(p, lp) * sunAbsorption;
+    vec3 totalSky = sun3; //+ mie2;
+    totalSky *= sunAbsorption * 0.5 + 0.5 * length(sunAbsorption);
+    vec3 newSky = jodieReinhardTonemap(totalSky);
+    return newSky;
 }
 
 
@@ -247,14 +278,20 @@ void main()
 
     vec4 shaded_color = raymarch(ro, rd);
 
-    vec3 col = shaded_color.rgb + (BGC - rd.y*0.4) * shaded_color.a;
+    float sun = clamp( dot(LIGHT_DIR,rd), 0.0, 1.0 );
 
-    float sun = clamp( dot(-LIGHT_DIR,rd), 0.0, 1.0 );
-    col += 0.4*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
+    // background sky
+    vec3 col = vec3(0.76,0.75,0.86);
+    col -= 0.6*vec3(0.90,0.75,0.95)*rd.y;
+	col += 0.2*vec3(1.00,0.60,0.10)*pow( sun, 8.0 );
     
+    // sun glare    
+	col += 0.2*vec3(1.0,0.4,0.2)*pow( sun, 3.0 );
 
-    //gamma correction
-    col = pow(col, vec3(1.0/2.2));
+    // tonemap
+    col = smoothstep(0.15,1.1,col);
+
+
     color = vec4(col, 1.0);
 }
 
