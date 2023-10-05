@@ -91,6 +91,32 @@ int main(void)
 
 	IndexBuffer ib(indices, 6);
 
+
+	//visualization objects, will use basic shader
+	float positions2[] = {
+		-0.5f, -0.5f, 0.0f, 0.0f,
+		 0.5f, -0.5f, 1.0f, 0.0f,
+		 0.5f,  0.5f, 1.0f, 1.0f,
+		-0.5f,  0.5f, 0.0f, 1.0f
+	};
+
+	unsigned int indices2[]{
+		0, 1, 2,
+		2, 3, 0
+	};
+
+	VertexArray va2;
+	VertexBuffer vb2(positions2, 4 * 4 * sizeof(float));
+	VertexBufferLayout layout2;
+	layout2.Push(GL_FLOAT, 2);
+	layout2.Push(GL_FLOAT, 2);
+	va2.AddBuffer(vb2, layout2);
+
+	IndexBuffer ib2(indices2, 6);
+	//end visualization setup
+
+
+
 	//converts into [-1, -1] range
 	glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
 	//mat4 proj = perspective(radians(45.0f), RESOLUTION.x/RESOLUTION.y, 0.0f, 100.0f);
@@ -98,13 +124,16 @@ int main(void)
 	mat4 model = mat4(1.f);
 
 	mat4 mvp = proj * view * model;
+
 	
 	Shader shader_march = { "res/shaders/raymarch.vert.glsl", "res/shaders/clouds.frag.glsl" };
-
-
 	shader_march.Bind();
 	shader_march.SetUniform1f("u_Aspect", RESOLUTION.x / RESOLUTION.y);
 	shader_march.SetUniform2f("u_Resolution", RESOLUTION.x, RESOLUTION.y);
+
+	Shader shader = { "res/shaders/basic.vert.glsl", "res/shaders/basic.frag.glsl" };
+	shader.Bind();
+	shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
 
 
 
@@ -177,7 +206,13 @@ int main(void)
 
 		shader_march.SetUniform2f("u_PitchYaw", radians(camera.m_pitch()), radians(camera.m_yaw()));
 
-		renderer.Draw(va, ib, shader_march);
+		//renderer.Draw(va, ib, shader_march);
+
+		//visualization renderer
+		shader.Bind();
+
+		renderer.Draw(va2, ib2, shader);
+
 
 
 		
