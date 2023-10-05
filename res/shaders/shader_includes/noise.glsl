@@ -1,5 +1,52 @@
 #pragma once
 
+
+float hash(float n);
+
+
+//https://advances.realtimerendering.com/s2017/Nubis%20-%20Authoring%20Realtime%20Volumetric%20Cloudscapes%20with%20the%20Decima%20Engine%20-%20Final%20.pdf
+
+float remap(float val, float omin, float omax, float nmin, float nmax) 
+{
+    return nmin + (((val - omin) / (omax - omin)) * (nmax - nmin));
+}
+
+float worley(in vec2 pos)
+{
+    vec2 point[5];
+    point[0] = vec2(0.83,0.75);
+    point[1] = vec2(0.60,0.07);
+    point[2] = vec2(0.28,0.64);
+    point[3] = vec2(0.31,0.26);
+    point[4] = vec2(0.72,0.15);
+
+    float m_dist = 1.;  // minimum distance
+
+    // Iterate through the points positions
+    for (int i = 0; i < point.length; i++) {
+        float dist = distance(pos, point[i]);
+
+        // Keep the closer distance
+        m_dist = min(m_dist, dist);
+    }
+    return m_dist;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //
 // GLSL textureless classic 3D noise "cnoise",
 // with an RSL-style periodic variant "pnoise".
