@@ -7,10 +7,7 @@ uniform vec4 u_Color;
 uniform sampler2D u_Texture;
 
 in vec2 v_TexCoord;
-
-
-
-
+in vec3 v_Position;
 
 
 void main() {
@@ -18,5 +15,6 @@ void main() {
 	//float pnoise = noise(vec3(v_TexCoord, 1.0));
 	float stratus = remap(v_TexCoord.y, 0.0, 0.1, 0.0, 1.0) * remap(v_TexCoord.y, 0.2, 0.3, 1.0, 0.0);
 	float worley = worley(v_TexCoord);
-	color = vec4(vec3(worley), 1.0);
+	vec3 idk = v_TexCoord.y > 0.? vec3(1.0) : vec3(0.0);
+	color = vec4(vec3(v_TexCoord.y), 1.0);
 }

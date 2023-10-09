@@ -120,7 +120,7 @@ int main(void)
 	//converts into [-1, -1] range
 	//glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
 	mat4 proj = perspective(radians(45.0f), RESOLUTION.x/RESOLUTION.y, 0.0f, 100.0f);
-	mat4 view = glm::translate(glm::mat4(0.0f), glm::vec3(0.0f, 0.0f, -4.0f)); //camera
+	mat4 view = glm::translate(glm::mat4(0.0f), glm::vec3(0.0f, 0.0f, 4.0f)); //camera
 	mat4 model = mat4(1.f);
 
 	mat4 mvp = proj * view * model;

@@ -20,7 +20,7 @@ float worley(in vec2 pos)
     point[3] = vec2(0.31,0.26);
     point[4] = vec2(0.72,0.15);
 
-    float m_dist = 1.;  // minimum distance
+    float m_dist = 10.;  // minimum distance
 
     // Iterate through the points positions
     for (int i = 0; i < point.length; i++) {

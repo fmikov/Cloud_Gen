@@ -18,7 +18,7 @@ uniform vec2 u_Mouse;
 uniform vec2 u_PitchYaw;
 uniform float u_Time;
 
-
+in vec3 v_Position;
 in vec2 v_TexCoord;
 
 const int NUMBER_OF_STEPS = 64;
