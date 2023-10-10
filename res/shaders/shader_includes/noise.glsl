@@ -1,5 +1,5 @@
 #pragma once
-
+uniform float u_Time;
 
 float hash(float n);
 
@@ -11,23 +11,42 @@ float remap(float val, float omin, float omax, float nmin, float nmax)
     return nmin + (((val - omin) / (omax - omin)) * (nmax - nmin));
 }
 
-float worley(in vec2 pos)
+vec2 random2( vec2 p ) 
 {
-    vec2 point[5];
-    point[0] = vec2(0.83,0.75);
-    point[1] = vec2(0.60,0.07);
-    point[2] = vec2(0.28,0.64);
-    point[3] = vec2(0.31,0.26);
-    point[4] = vec2(0.72,0.15);
+    return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
+}
 
-    float m_dist = 10.;  // minimum distance
+float worley(in vec2 posi, in float scale = 3.0)
+{
+    // Scale
+    vec2 pos = posi * scale;
 
-    // Iterate through the points positions
-    for (int i = 0; i < point.length; i++) {
-        float dist = distance(pos, point[i]);
+    // Tile the space
+    vec2 i_pos = floor(pos);
+    vec2 f_pos = fract(pos);
 
-        // Keep the closer distance
-        m_dist = min(m_dist, dist);
+    float m_dist = 1.;  // minimum distance
+
+    for (int y= -1; y <= 1; y++) {
+        for (int x= -1; x <= 1; x++) {
+            // Neighbor place in the grid
+            vec2 neighbor = vec2(float(x),float(y));
+
+            // Random position from current + neighbor place in the grid
+            vec2 point = random2(i_pos + neighbor);
+
+			// Animate the point
+            point = 0.5 + 0.5*sin(u_Time + 6.2831*point);
+
+			// Vector between the pixel and the point
+            vec2 diff = neighbor + point - f_pos;
+
+            // Distance to the point
+            float dist = length(diff);
+
+            // Keep the closer distance
+            m_dist = min(m_dist, dist);
+        }
     }
     return m_dist;
 }
@@ -61,7 +80,6 @@ float worley(in vec2 pos)
 // https://github.com/stegu/webgl-noise
 //
 
-uniform float u_Time;
 
 
 vec3 mod289(vec3 x)

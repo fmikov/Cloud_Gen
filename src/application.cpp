@@ -211,6 +211,7 @@ int main(void)
 		//visualization renderer
 		shader.Bind();
 		shader.SetUniformMat4f("u_MVP", mvp);
+		shader.SetUniform1f("u_Time", currFrame);
 		renderer.Draw(va2, ib2, shader);
 
 
