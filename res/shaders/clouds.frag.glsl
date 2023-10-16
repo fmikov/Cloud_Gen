@@ -22,6 +22,7 @@ in vec3 v_Position;
 in vec2 v_TexCoord;
 
 const int NUMBER_OF_STEPS = 64;
+const int STEPS_VOLUME = 16;
 const float MINIMUM_HIT_DISTANCE = 0.001;
 const float MAXIMUM_TRACE_DISTANCE = 1000.0;
 
@@ -97,6 +98,13 @@ float sdPlane(in vec3 p, in float h){
     return p.y + h;
 }
 
+float sdBox(in vec3 p, in vec3 b)
+{
+    vec3 q = abs(p) - b;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+
+}
+
 
 float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15) 
 {
@@ -109,6 +117,24 @@ float intersect_volume(in vec3 ro, in vec3 rd, float maxT = 15)
         t += result;
     }
     return ( t>=maxT ) ? -1.0 : t;
+}
+
+vec3 raymarch_bbox(in vec3 ro, in vec3 rd)
+{
+    //get to the start of the bounding box
+    vec2 ints = intersect_box(ro, rd, vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0));
+    float t0 = ints[0];
+    float t1 = ints[1];
+
+    float step_size = (t1 - t0)/STEPS_VOLUME;
+
+    for(int i = 0; i < STEPS_VOLUME; i++)
+    {
+        
+    }
+
+    return vec3(0.0);
+
 }
 
 
@@ -188,7 +214,7 @@ vec4 raymarch(in vec3 ro, in vec3 rd)
 //if we do 1-d, we can use this function as a density function as well?
 //return [0, 1], > 0 only if close enough
 float map(in vec3 currPos) {
-    float p1 = sdPlane(currPos, -5);
+    float p1 = sdBox(currPos, vec3(1.0, 1.0, 1.0));
 
 	return p1;
 }
@@ -292,7 +318,7 @@ void main()
     col = smoothstep(0.15,1.1,col);
 
 
-    color = vec4(col, 1.0);
+    color = vec4(shaded_color.xyz, 1.0);
 }
 
 

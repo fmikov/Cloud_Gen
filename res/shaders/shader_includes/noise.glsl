@@ -1,7 +1,122 @@
 #pragma once
 uniform float u_Time;
 
-float hash(float n);
+float hash( float n )
+{
+    return fract(sin(n)*43758.5453);
+}
+
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
+float hash1( float n )
+{
+    return fract( n*17.0*fract( n*0.3183099 ) );
+}
+
+//vec3 hash by IQ
+vec3 hash3( vec3 p )
+{
+	p = vec3( dot(p,vec3(127.1,311.7, 74.7)),
+			  dot(p,vec3(269.5,183.3,246.1)),
+			  dot(p,vec3(113.5,271.9,124.6)));
+
+	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+}
+
+//https://www.shadertoy.com/view/3dVXDc
+float gradientNoise(vec3 x, float freq)
+{
+    // grid
+    vec3 p = floor(x);
+    vec3 w = fract(x);
+    
+    // quintic interpolant
+    vec3 u = w * w * w * (w * (w * 6. - 15.) + 10.);
+
+    
+    // gradients
+    vec3 ga = hash3(mod(p + vec3(0., 0., 0.), freq));
+    vec3 gb = hash3(mod(p + vec3(1., 0., 0.), freq));
+    vec3 gc = hash3(mod(p + vec3(0., 1., 0.), freq));
+    vec3 gd = hash3(mod(p + vec3(1., 1., 0.), freq));
+    vec3 ge = hash3(mod(p + vec3(0., 0., 1.), freq));
+    vec3 gf = hash3(mod(p + vec3(1., 0., 1.), freq));
+    vec3 gg = hash3(mod(p + vec3(0., 1., 1.), freq));
+    vec3 gh = hash3(mod(p + vec3(1., 1., 1.), freq));
+    
+    // projections
+    float va = dot(ga, w - vec3(0., 0., 0.));
+    float vb = dot(gb, w - vec3(1., 0., 0.));
+    float vc = dot(gc, w - vec3(0., 1., 0.));
+    float vd = dot(gd, w - vec3(1., 1., 0.));
+    float ve = dot(ge, w - vec3(0., 0., 1.));
+    float vf = dot(gf, w - vec3(1., 0., 1.));
+    float vg = dot(gg, w - vec3(0., 1., 1.));
+    float vh = dot(gh, w - vec3(1., 1., 1.));
+	
+    // interpolation
+    return va + 
+           u.x * (vb - va) + 
+           u.y * (vc - va) + 
+           u.z * (ve - va) + 
+           u.x * u.y * (va - vb - vc + vd) + 
+           u.y * u.z * (va - vc - ve + vg) + 
+           u.z * u.x * (va - vb - ve + vf) + 
+           u.x * u.y * u.z * (-va + vb + vc - vd + ve - vf - vg + vh);
+}
+
+
+// Tileable 3D worley noise
+float worleyNoise(vec3 uv, float freq)
+{    
+    vec3 id = floor(uv);
+    vec3 p = fract(uv);
+    
+    float minDist = 10000.;
+    for (float x = -1.; x <= 1.; ++x)
+    {
+        for(float y = -1.; y <= 1.; ++y)
+        {
+            for(float z = -1.; z <= 1.; ++z)
+            {
+                vec3 offset = vec3(x, y, z);
+            	vec3 h = hash3(mod(id + offset, vec3(freq))) * .5 + .5;
+    			h += offset;
+            	vec3 d = p - h;
+           		minDist = min(minDist, dot(d, d));
+            }
+        }
+    }
+    
+    // inverted worley noise
+    return 1. - minDist;
+}
+
+// Fbm for Perlin noise based on iq's blog
+float perlinfbm(vec3 p, float freq, int octaves)
+{
+    float G = exp2(-.85);
+    float amp = 1.;
+    float noise = 0.;
+    for (int i = 0; i < octaves; ++i)
+    {
+        noise += amp * gradientNoise(p * freq, freq);
+        freq *= 2.;
+        amp *= G;
+    }
+    
+    return noise;
+}
+
+// Tileable Worley fbm inspired by Andrew Schneider's Real-Time Volumetric Cloudscapes
+// chapter in GPU Pro 7.
+float worleyFbm(vec3 pi, float freq = 3.0, float scale = 1.0)
+{
+    vec3 p = pi * scale;
+    return worleyNoise(p*freq, freq) * .625 +
+        	 worleyNoise(p*freq*2., freq*2.) * .25 +
+        	 worleyNoise(p*freq*4., freq*4.) * .125;
+}
 
 
 //https://advances.realtimerendering.com/s2017/Nubis%20-%20Authoring%20Realtime%20Volumetric%20Cloudscapes%20with%20the%20Decima%20Engine%20-%20Final%20.pdf
@@ -247,17 +362,6 @@ float pnoise(vec3 P, vec3 rep)
   return 2.2 * n_xyz;
 }
 
-float hash( float n )
-{
-    return fract(sin(n)*43758.5453);
-}
-
-// Taken from Inigo Quilez's Rainforest ShaderToy:
-// https://www.shadertoy.com/view/4ttSWf
-float hash1( float n )
-{
-    return fract( n*17.0*fract( n*0.3183099 ) );
-}
 
 // Taken from Inigo Quilez's Rainforest ShaderToy:
 // https://www.shadertoy.com/view/4ttSWf

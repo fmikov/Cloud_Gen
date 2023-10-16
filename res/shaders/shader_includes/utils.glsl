@@ -81,3 +81,22 @@ vec2 intersect_box( in vec3 ro, in vec3 rd, in vec3 cen, in vec3 rad )
 
 	return vec2( tN, tF );
 }
+
+//ray box intersect by Sebastian Lague
+vec2 intersect_box2( in vec3 ro, in vec3 rd, in vec3 boundsMin, in vec3 boundsMax ) 
+{
+    vec3 t0 = (boundsMin - ro) / rd;
+	vec3 t1 = (boundsMax - ro) / rd;
+	
+	vec3 tmin = min(t0, t1);
+	vec3 tmax = max(t0, t1);
+
+
+	float dstA = max( max( tmin.x, tmin.y ), tmin.z );
+	float dstB = min( tmax.x, min( tmax.y, tmax.z ) );
+	
+	float dstBox = max(0., dstA);
+	float dstInsideBox = max(0., dstB - dstBox);
+
+	return vec2( dstBox, dstInsideBox );
+}

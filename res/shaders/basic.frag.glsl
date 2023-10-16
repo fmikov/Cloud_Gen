@@ -14,7 +14,15 @@ void main() {
 	//vec4 texColor = texture(u_Texture, v_TexCoord);
 	//float pnoise = noise(vec3(v_TexCoord, 1.0));
 	float stratus = remap(v_TexCoord.y, 0.0, 0.1, 0.0, 1.0) * remap(v_TexCoord.y, 0.2, 0.3, 1.0, 0.0);
-	float worley = worley(v_TexCoord, 3);
-	vec3 idk = v_TexCoord.y > 0.? vec3(1.0) : vec3(0.0);
-	color = vec4(vec3(1-worley), 1.0);
+
+
+	float wor = worleyFbm(vec3(v_TexCoord, 50), 3);
+	float test = 1-worley(v_TexCoord, 5.0);
+
+    
+    float pfbm= mix(1., perlinfbm(vec3(v_TexCoord, 1.0), 4., 7), .5);
+    //pfbm = abs(pfbm * 2. - 1.); // billowy perlin noise
+
+
+	color = vec4(vec3(wor), 1.0);
 }
